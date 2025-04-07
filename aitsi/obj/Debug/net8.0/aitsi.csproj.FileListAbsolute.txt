@@ -1,0 +1,15 @@
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.AssemblyInfoInputs.cache
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.AssemblyInfo.cs
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.csproj.CoreCompileInputs.cache
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.sourcelink.json
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\bin\Debug\net8.0\aitsi.exe
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\bin\Debug\net8.0\aitsi.deps.json
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\bin\Debug\net8.0\aitsi.runtimeconfig.json
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\bin\Debug\net8.0\aitsi.dll
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\bin\Debug\net8.0\aitsi.pdb
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.dll
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\refint\aitsi.dll
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.pdb
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.genruntimeconfig.cache
+C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\ref\aitsi.dll
