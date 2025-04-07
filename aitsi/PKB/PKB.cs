@@ -1,6 +1,6 @@
 namespace aitsi
 {
-	static class PKB
+	class PKB
     {
         public static string[][] parentTable;
         public static string[][] followsTable;

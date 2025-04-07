@@ -1,8 +1,8 @@
 namespace aitsi
 {
-	static class TNode
+	class TNode
     {
-       public string value;
-       public TNode[] children;
+       public static string value;
+       public static TNode[] children;
     }
 }

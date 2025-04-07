@@ -1,6 +1,6 @@
 namespace aitsi
 {
-	static class Proc
+	class Proc
     {
         public static string procedureName;
         public static TNode rootAST;

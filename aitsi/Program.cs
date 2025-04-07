@@ -5,7 +5,7 @@ class Program {
     {
         Console.WriteLine("Proszę podać deklaracje zmiennych:");
         string assignments = Console.ReadLine();
-        Console.WriteLine(QueryProcessor.evaluateAssignments(assignments));
+        Console.WriteLine(QueryValidator.evaluateAssignments(assignments));
 
         Console.WriteLine("Proszę podać zapytanie:");
         string query = Console.ReadLine();
