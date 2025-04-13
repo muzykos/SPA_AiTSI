@@ -5,10 +5,10 @@ class Program {
     {
         Console.WriteLine("Proszę podać deklaracje zmiennych:");
         string assignments = Console.ReadLine();
-        Console.WriteLine(QueryValidator.evaluateAssignments(assignments));
+        Console.WriteLine(QueryAssignmentsValidator.evaluateAssignments(assignments));
 
         Console.WriteLine("Proszę podać zapytanie:");
         string query = Console.ReadLine();
-        Console.WriteLine(QueryProcessor.evaluateQuery(query));
+        Console.WriteLine(QueryPreProcessor.evaluateQuery(query));
     }
 }
