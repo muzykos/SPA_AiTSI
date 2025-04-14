@@ -138,7 +138,7 @@ namespace aitsi
                     switch (queryParts[i].Trim().ToLower())
                     {
                         case "such":
-                            if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wyst�pi�o 'that'.");
+                            if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystąpiło 'that'.");
                             i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
                             break;
                         case "with":
@@ -146,7 +146,7 @@ namespace aitsi
                             i += 5;
                             break;
                         default:
-                            return "Zapytanie ma niepoprawn� sk�adni�. W miejscu such that lub with, wyst�pi�o: " + queryParts[i];
+                            return "Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i];
                     }
                 }
             }
@@ -155,35 +155,35 @@ namespace aitsi
                 return e.ToString();
             }
 
-            return "Podane zapytanie jest poprawne sk�adniowo.";
+            return "Podane zapytanie jest poprawne składniowo.";
         }
 
         private static bool validateIfStartsWithSelect(string firstValue)
         {
-            if (firstValue.Trim().ToLower() != "select") throw new Exception("Zapytanie nie rozpocz�to od 'Select'.");
+            if (firstValue.Trim().ToLower() != "select") throw new Exception("Zapytanie nie rozpoczęto od 'Select'.");
             return true;
         }
 
         private static int validateSuchThat(string[] suchThat)
         {
-            if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiedni� warto�� po 'such that': " + suchThat[0]);
-            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwieraj�cego po rederencji.");
+            if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiednią wartość po 'such that': " + suchThat[0]);
+            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierającego po rederencji.");
 
             for (int i = 2; i < suchThat.Length; i++)
             {
                 if (suchThat[i].Trim() == ")")
                 {
-                    if (i == 2) throw new Exception("Nie podano warto�ci do sprawdzenia w referencji.");
+                    if (i == 2) throw new Exception("Nie podano wartości do sprawdzenia w referencji.");
                     else return i;
                 }
             }
-            throw new Exception("Nie zamkni�to nawiasu po referencji.");
+            throw new Exception("Nie zamknięto nawiasu po referencji.");
         }
 
         private static bool validateWith(string[] with)
         {
-            if (with[1].Trim() != ".") throw new Exception("Niepoprawna sk�adnia 'with'. Zabrak�o znaku '.' pomi�dzy synonimem a nazw� atrybutu.");
-            if (with[3].Trim() != "=") throw new Exception("Niepoprawna sk�adnia 'with'. Zabrak�o znaku '='.");
+            if (with[1].Trim() != ".") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '.' pomiędzy synonimem a nazwą atrybutu.");
+            if (with[3].Trim() != "=") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '='.");
             return true;
         }
     }
