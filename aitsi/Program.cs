@@ -1,4 +1,5 @@
 ﻿using aitsi;
+using static aitsi.QueryPreProcessor;
 
 class Program { 
     static void Main(String[] args)
@@ -10,5 +11,6 @@ class Program {
         Console.WriteLine("Proszę podać zapytanie:");
         string query = Console.ReadLine();
         Console.WriteLine(QueryPreProcessor.evaluateQuery(query));
+        QueryNode PQLTree = QueryPreProcessor.Parse(query);
     }
 }

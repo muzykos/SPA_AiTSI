@@ -2,19 +2,113 @@ using System.Text.RegularExpressions;
 
 namespace aitsi
 {
-	static class QueryPreProcessor
-	{
-		public static Dictionary<string, List<string>> assignmentsList = new Dictionary<string, List<string>>();
+    static class QueryPreProcessor
+    {
+        public static Dictionary<string, List<string>> assignmentsList = new Dictionary<string, List<string>>();
         public static string[] allowedRelRefs = ["modifies", "uses", "parent", "follows", "parent*", "follows*"];
-		public static string evaluateQuery(string query)
-		{
-			if (query == null || query == "") return "Nie podano zapytania.";
-			try
-			{
+        public static string[] DeclarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
+        public class QueryNode : Node
+        {
+            public List<DeclarationNode> Declarations { get; set; } = new();
+            public SelectNode Select { get; set; }
+        }
+
+        public class DeclarationNode : Node
+        {
+            public string Type { get; set; }
+            public List<string> Variables { get; set; } = new();
+            public string Name => $"Declaration: {Type} ({string.Join(", ", Variables)})";
+        }
+
+        public class SelectNode : Node
+        {
+            public string Variable { get; set; }
+            public List<ClauseNode> Clauses { get; set; } = new();
+            public string Name => $"Select: {Variable}";
+
+        }
+
+        public class ClauseNode : Node
+        {
+            public string Relation { get; set; }
+            public string Left { get; set; }
+            public string Right { get; set; }
+            public string Name => $"Clause: {Relation}({Left}, {Right})";
+        }
+        public static QueryNode Parse(string input)
+        {
+            var query = new QueryNode();
+            var lines = input.Split(';');
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (DeclarationTypes.Any(k => trimmed.StartsWith(k)))
+                {
+                    var match = Regex.Match(trimmed, @"(\w+)\s+([\w,\s]+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var group2Value = match.Groups[2].Value;
+                        var variables = new List<string>(
+                            group2Value.Split(',', StringSplitOptions.TrimEntries)
+                            .Where(v => !string.IsNullOrWhiteSpace(v))
+                        );
+                        query.Children.Add(new DeclarationNode
+                        {
+                            Type = match.Groups[1].Value,
+                            Variables = variables
+                        });
+                    }
+                }
+                else if (trimmed.StartsWith("Select"))
+                {
+                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var selectVar = match.Groups[1].Value;
+                        var clausePart = match.Groups[2].Value;
+
+                        var clauses = ParseClauses(clausePart);
+
+                        query.Children.Add(new SelectNode
+                        {
+                            Variable = selectVar,
+                            Clauses = clauses
+                        });
+                    }
+                }
+            }
+            return query;
+        }
+
+        public static List<ClauseNode> ParseClauses(string clausePart)
+        {
+            var clauseList = new List<ClauseNode>();
+            var parts = clausePart.Split("and", StringSplitOptions.TrimEntries);
+            foreach (var part in parts)
+            {
+                var match = Regex.Match(part, @"(\w+)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)");
+                if (match.Success)
+                {
+                    clauseList.Add(new ClauseNode
+                    {
+                        Relation = match.Groups[1].Value,
+                        Left = match.Groups[2].Value,
+                        Right = match.Groups[3].Value
+                    });
+                }
+            }
+            return clauseList;
+        }
+
+        public static string evaluateQuery(string query)
+        {
+            if (query == null || query == "") return "Nie podano zapytania.";
+            try
+            {
                 var matches = Regex.Matches(query, @"\"".*?\""|\w+[#*]?|[^\s\w]");
                 string[] queryParts = new string[matches.Count];
 
-                for (int i = 0; i < matches.Count; i++)queryParts[i] += matches[i].Value;
+                for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
 
                 //foreach (var item in queryParts) Console.WriteLine(item);
 
@@ -25,7 +119,7 @@ namespace aitsi
                     switch (queryParts[i].Trim().ToLower())
                     {
                         case "such":
-                            if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wyst¹pi³o 'that'.");
+                            if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystï¿½piï¿½o 'that'.");
                             i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
                             break;
                         case "with":
@@ -33,44 +127,44 @@ namespace aitsi
                             i += 5;
                             break;
                         default:
-                            return "Zapytanie ma niepoprawn¹ sk³adniê. W miejscu such that lub with, wyst¹pi³o: " + queryParts[i];
+                            return "Zapytanie ma niepoprawnï¿½ skï¿½adniï¿½. W miejscu such that lub with, wystï¿½piï¿½o: " + queryParts[i];
                     }
-                }         
+                }
             }
             catch (Exception e)
-			{
+            {
                 return e.ToString();
             }
 
-			return "Podane zapytanie jest poprawne sk³adniowo.";
-		}
+            return "Podane zapytanie jest poprawne skï¿½adniowo.";
+        }
 
-		private static bool validateIfStartsWithSelect(string firstValue)
-		{
-            if (firstValue.Trim().ToLower() != "select") throw new Exception("Zapytanie nie rozpoczêto od 'Select'.");
+        private static bool validateIfStartsWithSelect(string firstValue)
+        {
+            if (firstValue.Trim().ToLower() != "select") throw new Exception("Zapytanie nie rozpoczï¿½to od 'Select'.");
             return true;
-		}
+        }
 
         private static int validateSuchThat(string[] suchThat)
         {
-            if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiedni¹ wartoœæ po 'such that': " + suchThat[0]);
-            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwieraj¹cego po rederencji.");
+            if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiedniï¿½ wartoï¿½ï¿½ po 'such that': " + suchThat[0]);
+            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierajï¿½cego po rederencji.");
 
             for (int i = 2; i < suchThat.Length; i++)
             {
                 if (suchThat[i].Trim() == ")")
                 {
-                    if (i == 2) throw new Exception("Nie podano wartoœci do sprawdzenia w referencji.");
+                    if (i == 2) throw new Exception("Nie podano wartoï¿½ci do sprawdzenia w referencji.");
                     else return i;
-                }              
+                }
             }
-            throw new Exception("Nie zamkniêto nawiasu po referencji.");            
+            throw new Exception("Nie zamkniï¿½to nawiasu po referencji.");
         }
 
         private static bool validateWith(string[] with)
         {
-            if (with[1].Trim() != ".") throw new Exception("Niepoprawna sk³adnia 'with'. Zabrak³o znaku '.' pomiêdzy synonimem a nazw¹ atrybutu.");
-            if (with[3].Trim() != "=") throw new Exception("Niepoprawna sk³adnia 'with'. Zabrak³o znaku '='.");
+            if (with[1].Trim() != ".") throw new Exception("Niepoprawna skï¿½adnia 'with'. Zabrakï¿½o znaku '.' pomiï¿½dzy synonimem a nazwï¿½ atrybutu.");
+            if (with[3].Trim() != "=") throw new Exception("Niepoprawna skï¿½adnia 'with'. Zabrakï¿½o znaku '='.");
             return true;
         }
     }
