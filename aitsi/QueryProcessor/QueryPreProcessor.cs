@@ -11,20 +11,21 @@ namespace aitsi
         {
             public List<DeclarationNode> Declarations { get; set; } = new();
             public SelectNode Select { get; set; }
+            public override string Name => "Query";
         }
 
         public class DeclarationNode : Node
         {
             public string Type { get; set; }
             public List<string> Variables { get; set; } = new();
-            public string Name => $"Declaration: {Type} ({string.Join(", ", Variables)})";
+            public override string Name => $"Declaration: {Type} ({string.Join(", ", Variables)})";
         }
 
         public class SelectNode : Node
         {
             public string Variable { get; set; }
             public List<ClauseNode> Clauses { get; set; } = new();
-            public string Name => $"Select: {Variable}";
+            public override string Name => $"Select: {Variable}";
 
         }
 
@@ -33,7 +34,7 @@ namespace aitsi
             public string Relation { get; set; }
             public string Left { get; set; }
             public string Right { get; set; }
-            public string Name => $"Clause: {Relation}({Left}, {Right})";
+            public override string Name => $"Clause: {Relation}({Left}, {Right})";
         }
         public static QueryNode Parse(string input)
         {
@@ -48,15 +49,15 @@ namespace aitsi
                     if (match.Success)
                     {
                         var group2Value = match.Groups[2].Value;
-                        var variables = new List<string>(
-                            group2Value.Split(',', StringSplitOptions.TrimEntries)
-                            .Where(v => !string.IsNullOrWhiteSpace(v))
+                        var variables = new List<string>(group2Value.Split(',', StringSplitOptions.TrimEntries).Where(v => !string.IsNullOrWhiteSpace(v))
                         );
-                        query.Children.Add(new DeclarationNode
+                        var declaration = new DeclarationNode
                         {
                             Type = match.Groups[1].Value,
                             Variables = variables
-                        });
+                        };
+                        query.Declarations.Add(declaration);
+                        query.Children.Add(declaration);
                     }
                 }
                 else if (trimmed.StartsWith("Select"))
@@ -69,11 +70,16 @@ namespace aitsi
 
                         var clauses = ParseClauses(clausePart);
 
-                        query.Children.Add(new SelectNode
+                        var selectNode = new SelectNode
                         {
                             Variable = selectVar,
                             Clauses = clauses
-                        });
+                        };
+                        foreach (var clause in clauses)
+                        {
+                            selectNode.Children.Add(clause);
+                        }
+                        query.Children.Add(selectNode);
                     }
                 }
             }
@@ -86,7 +92,7 @@ namespace aitsi
             var parts = clausePart.Split("and", StringSplitOptions.TrimEntries);
             foreach (var part in parts)
             {
-                var match = Regex.Match(part, @"(\w+)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)");
+                var match = Regex.Match(part, @"([\w\*]+)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)");
                 if (match.Success)
                 {
                     clauseList.Add(new ClauseNode
@@ -98,6 +104,19 @@ namespace aitsi
                 }
             }
             return clauseList;
+        }
+        public static void DrawTree(Node node, string indent = "", bool isLast = true)
+        {
+            Console.Write(indent);
+            Console.Write(isLast ? "└── " : "├── ");
+            Console.WriteLine(node.Name);
+
+            indent += isLast ? "    " : "│   ";
+
+            for (int i = 0; i < node.Children.Count; i++)
+            {
+                DrawTree(node.Children[i], indent, i == node.Children.Count - 1);
+            }
         }
 
         public static string evaluateQuery(string query)
