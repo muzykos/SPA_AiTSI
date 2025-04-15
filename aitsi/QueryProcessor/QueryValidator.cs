@@ -1,22 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace aitsi.QueryProcessor
+﻿namespace aitsi.QueryProcessor
 {
     internal class QueryValidator
     {
         public static string[] allowedValuesInReturnParameter = ["boolean"];
 
-        private static bool validateReturnParameter(string returnParameter)
+        public static string evaluateQueryLogic(QueryNode tree)
         {
-            if (allowedValuesInReturnParameter.Contains(returnParameter)) return true;        
-            foreach (string key in QueryPreProcessor.assignmentsList.Keys)
-                if (QueryPreProcessor.assignmentsList[key].Contains(returnParameter)) return true;
+            
+            validateReturnParameter(tree);                      
+            
+            return "Sprawdzam";
+        }
+        private static bool validateReturnParameter(QueryNode tree)
+        {
+            string returnValue = tree.getChildByName("select").variables[0];
+            Node[] declarations = tree.getChildreenByName("Declaration");
 
-            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnParameter);
+            if (allowedValuesInReturnParameter.Contains(returnValue)) return true;
+            if (int.TryParse(returnValue, out _)) return true;
+            foreach (Node declaration in declarations)
+                if (declaration.variables.Contains(returnValue)) return true;
+            
+            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
         }
 
         private static bool validateIfStmtRef(string value)
@@ -26,6 +31,18 @@ namespace aitsi.QueryProcessor
 
             foreach (string key in QueryPreProcessor.assignmentsList.Keys)
                 if (QueryPreProcessor.assignmentsList[key].Contains(value)) return true;
+
+            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+        }
+
+        private static bool checkIfIDENT(QueryNode tree, string value)
+        {
+            Node[] declarations = tree.getChildreenByName("Declaration");
+
+            if (allowedValuesInReturnParameter.Contains(value)) return true;
+            if (int.TryParse(value, out _)) return true;
+            foreach (Node declaration in declarations)
+                if (declaration.variables.Contains(value)) return true;
 
             throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
         }

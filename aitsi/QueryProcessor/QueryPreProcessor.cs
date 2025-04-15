@@ -7,35 +7,7 @@ namespace aitsi
         public static Dictionary<string, List<string>> assignmentsList = new Dictionary<string, List<string>>();
         public static string[] allowedRelRefs = ["modifies", "uses", "parent", "follows", "parent*", "follows*"];
         public static string[] DeclarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
-        public class QueryNode : Node
-        {
-            public List<DeclarationNode> Declarations { get; set; } = new();
-            public SelectNode Select { get; set; }
-            public override string Name => "Query";
-        }
 
-        public class DeclarationNode : Node
-        {
-            public string Type { get; set; }
-            public List<string> Variables { get; set; } = new();
-            public override string Name => $"Declaration: {Type} ({string.Join(", ", Variables)})";
-        }
-
-        public class SelectNode : Node
-        {
-            public string Variable { get; set; }
-            public List<ClauseNode> Clauses { get; set; } = new();
-            public override string Name => $"Select: {Variable}";
-
-        }
-
-        public class ClauseNode : Node
-        {
-            public string Relation { get; set; }
-            public string Left { get; set; }
-            public string Right { get; set; }
-            public override string Name => $"Clause: {Relation}({Left}, {Right})";
-        }
         public static QueryNode Parse(string input)
         {
             var query = new QueryNode();
@@ -52,12 +24,12 @@ namespace aitsi
                         var variables = new List<string>(group2Value.Split(',', StringSplitOptions.TrimEntries).Where(v => !string.IsNullOrWhiteSpace(v))
                         );
                         var declaration = new DeclarationNode
-                        {
-                            Type = match.Groups[1].Value,
-                            Variables = variables
-                        };
-                        query.Declarations.Add(declaration);
-                        query.Children.Add(declaration);
+                        (                     
+                            match.Groups[1].Value,
+                            variables
+                        );
+                        query.addChild(declaration);
+                        //query.Children.Add(declaration);
                     }
                 }
                 else if (trimmed.StartsWith("Select"))
@@ -71,15 +43,12 @@ namespace aitsi
                         var clauses = ParseClauses(clausePart);
 
                         var selectNode = new SelectNode
-                        {
-                            Variable = selectVar,
-                            Clauses = clauses
-                        };
-                        foreach (var clause in clauses)
-                        {
-                            selectNode.Children.Add(clause);
-                        }
-                        query.Children.Add(selectNode);
+                        (
+                            selectVar,
+                            clauses
+                        );
+                       
+                        query.addChild(selectNode);
                     }
                 }
             }
@@ -96,11 +65,11 @@ namespace aitsi
                 if (match.Success)
                 {
                     clauseList.Add(new ClauseNode
-                    {
-                        Relation = match.Groups[1].Value,
-                        Left = match.Groups[2].Value,
-                        Right = match.Groups[3].Value
-                    });
+                    (
+                        match.Groups[1].Value,
+                        match.Groups[2].Value,
+                        match.Groups[3].Value
+                    ));
                 }
             }
             return clauseList;
@@ -109,50 +78,44 @@ namespace aitsi
         {
             Console.Write(indent);
             Console.Write(isLast ? "└── " : "├── ");
-            Console.WriteLine(node.Name);
+            Console.WriteLine(node.name);
 
             indent += isLast ? "    " : "│   ";
 
-            for (int i = 0; i < node.Children.Count; i++)
+            for (int i = 0; i < node.children.Count; i++)
             {
-                DrawTree(node.Children[i], indent, i == node.Children.Count - 1);
+                DrawTree(node.children[i], indent, i == node.children.Count - 1);
             }
         }
 
         public static string evaluateQuery(string query)
         {
             if (query == null || query == "") return "Nie podano zapytania.";
-            try
+            
+            var matches = Regex.Matches(query, @"\"".*?\""|\w+[#*]?|[^\s\w]");
+            string[] queryParts = new string[matches.Count];
+
+            for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
+
+            //foreach (var item in queryParts) Console.WriteLine(item);
+
+            validateIfStartsWithSelect(queryParts[0]);
+
+            for (int i = 2; i < queryParts.Length; i++)
             {
-                var matches = Regex.Matches(query, @"\"".*?\""|\w+[#*]?|[^\s\w]");
-                string[] queryParts = new string[matches.Count];
-
-                for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
-
-                //foreach (var item in queryParts) Console.WriteLine(item);
-
-                validateIfStartsWithSelect(queryParts[0]);
-
-                for (int i = 2; i < queryParts.Length; i++)
+                switch (queryParts[i].Trim().ToLower())
                 {
-                    switch (queryParts[i].Trim().ToLower())
-                    {
-                        case "such":
-                            if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystąpiło 'that'.");
-                            i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
-                            break;
-                        case "with":
-                            validateWith(queryParts.Skip(i + 1).ToArray());
-                            i += 5;
-                            break;
-                        default:
-                            return "Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i];
-                    }
+                    case "such":
+                        if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystąpiło 'that'.");
+                        i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
+                        break;
+                    case "with":
+                        validateWith(queryParts.Skip(i + 1).ToArray());
+                        i += 5;
+                        break;
+                    default:
+                        return "Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i];
                 }
-            }
-            catch (Exception e)
-            {
-                return e.ToString();
             }
 
             return "Podane zapytanie jest poprawne składniowo.";

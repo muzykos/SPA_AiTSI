@@ -17,54 +17,47 @@ namespace aitsi
             {
                 assignmentsParts[i] = matches[i].Value;
             }
+ 
+            checkDuplicates(assignmentsParts);
 
-            try
+            for (int i = 0; i < assignmentsParts.Length; i++)
             {
-                checkDuplicates(assignmentsParts);
-
-                for (int i = 0; i < assignmentsParts.Length; i++)
+                if (allowedValuesInAssignments.Contains(assignmentsParts[i].ToLower()))
                 {
-                    if (allowedValuesInAssignments.Contains(assignmentsParts[i].ToLower()))
-                    {
 
-                        if (!QueryPreProcessor.assignmentsList.ContainsKey(assignmentsParts[i].ToLower()))
+                    if (!QueryPreProcessor.assignmentsList.ContainsKey(assignmentsParts[i].ToLower()))
+                    {
+                        List<string> list = new List<string>();
+                        string tempKey = assignmentsParts[i++].ToLower();
+                        do
                         {
-                            List<string> list = new List<string>();
-                            string tempKey = assignmentsParts[i++].ToLower();
+                            if (i >= assignmentsParts.Length) throw new Exception("B³êdnie zakoñczono deklaracje.");
+                            if (allowedValuesInAssignments.Contains(assignmentsParts[i])) throw new Exception("Nieodpowiedni szyk. Typ wartoœci nie powinien siê tu znaleŸæ. Typ: " + assignmentsParts[i]);
+                            if (assignmentsParts[i] == ",") continue;
+                            if (assignmentsParts[i] == ";") throw new Exception("Nieodpowiedni szyk. Znak ';' nie powinien siê tu znaleŸæ.");
+                            list.Add(string.Concat(assignmentsParts[i].Trim()));
+                            checkDuplicates(list.ToArray());
+                        } while (!assignmentsParts[++i].Contains(';'));
+                        QueryPreProcessor.assignmentsList.Add(tempKey, list);
+                    }
+                    else
+                    {
+                        if (QueryPreProcessor.assignmentsList.TryGetValue(assignmentsParts[i], out var list))
+                        {
                             do
                             {
+                                ++i;
                                 if (i >= assignmentsParts.Length) throw new Exception("B³êdnie zakoñczono deklaracje.");
                                 if (allowedValuesInAssignments.Contains(assignmentsParts[i])) throw new Exception("Nieodpowiedni szyk. Typ wartoœci nie powinien siê tu znaleŸæ. Typ: " + assignmentsParts[i]);
-                                if (assignmentsParts[i] == ",") continue;
-                                if (assignmentsParts[i] == ";") throw new Exception("Nieodpowiedni szyk. Znak ';' nie powinien siê tu znaleŸæ.");
-                                list.Add(string.Concat(assignmentsParts[i].Trim()));
-                                checkDuplicates(list.ToArray());
-                            } while (!assignmentsParts[++i].Contains(';'));
-                            QueryPreProcessor.assignmentsList.Add(tempKey, list);
+                                list.Add(string.Concat(assignmentsParts[i].Trim().Split(';', ',')));
+                            } while (!assignmentsParts[i].Contains(';'));
                         }
-                        else
-                        {
-                            if (QueryPreProcessor.assignmentsList.TryGetValue(assignmentsParts[i], out var list))
-                            {
-                                do
-                                {
-                                    ++i;
-                                    if (i >= assignmentsParts.Length) throw new Exception("B³êdnie zakoñczono deklaracje.");
-                                    if (allowedValuesInAssignments.Contains(assignmentsParts[i])) throw new Exception("Nieodpowiedni szyk. Typ wartoœci nie powinien siê tu znaleŸæ. Typ: " + assignmentsParts[i]);
-                                    list.Add(string.Concat(assignmentsParts[i].Trim().Split(';', ',')));
-                                } while (!assignmentsParts[i].Contains(';'));
-                            }
-                            else throw new Exception("Nierozpoznany b³¹d sk³adni: " + assignmentsParts[i]);
-                        }
+                        else throw new Exception("Nierozpoznany b³¹d sk³adni: " + assignmentsParts[i]);
                     }
-                    else throw new Exception("Nierozpoznany typ zmiennej: " + assignmentsParts[i]);
                 }
-            }
-            catch (Exception e)
-            {
-                return e.ToString();
-            }
-
+                else throw new Exception("Nierozpoznany typ zmiennej: " + assignmentsParts[i]);
+            }           
+            
             return returnResponse();
         }
 
