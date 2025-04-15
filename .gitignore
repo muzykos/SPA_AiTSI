@@ -398,3 +398,17 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+aitsi/.vs/ProjectEvaluation/aitsi.projects.v7.bin
+aitsi/.vs/ProjectEvaluation/aitsi.metadata.v7.bin
+aitsi/.vs/aitsi/v17/.suo
+aitsi/.vs/aitsi/v17/.futdcache.v2
+aitsi/.vs/aitsi/DesignTimeBuild/.dtbcache.v2
+aitsi/obj/project.nuget.cache
+aitsi/obj/project.assets.json
+aitsi/obj/Debug/net8.0/aitsi.GeneratedMSBuildEditorConfig.editorconfig
+aitsi/obj/Debug/net8.0/aitsi.assets.cache
+aitsi/obj/Debug/net8.0/aitsi.AssemblyInfoInputs.cache
+aitsi/obj/Debug/net8.0/aitsi.AssemblyInfo.cs
+aitsi/obj/aitsi.csproj.nuget.g.props
+aitsi/obj/aitsi.csproj.nuget.dgspec.json
+aitsi/.vs/aitsi/FileContentIndex/*
