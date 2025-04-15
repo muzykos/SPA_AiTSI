@@ -82,9 +82,9 @@ namespace aitsi.Parser
             return child.getParent();
         }
 
-        public bool IsFollowed(TNode a, TNode b)
+        public bool isFollowed(TNode a, TNode b)
         {
-            return getFollows(a) == b;
+            return (getFollows(a) == b);
         }
     }
 }
