@@ -1,6 +1,5 @@
 ﻿using System.Text.RegularExpressions;
 using static aitsi.QueryPreProcessor;
-using static aitsi.QueryAssignmentsValidator;
 using static aitsi.QueryProcessor.QueryValidator;
 class Program { 
     static void Main(String[] args)

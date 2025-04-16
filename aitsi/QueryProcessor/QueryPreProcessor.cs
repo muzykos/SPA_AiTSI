@@ -4,94 +4,49 @@ namespace aitsi
 {
     static class QueryPreProcessor
     {
-        public static Dictionary<string, List<string>> assignmentsList = new Dictionary<string, List<string>>();
         public static string[] allowedRelRefs = ["modifies", "uses", "parent", "follows", "parent*", "follows*"];
-        public static string[] DeclarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
+        public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
 
-        public static QueryNode Parse(string input)
+        public static string evaluateAssignments(string assignments)
         {
-            var query = new QueryNode();
-            var lines = input.Split(';');
-            foreach (var line in lines)
+            if (string.IsNullOrWhiteSpace(assignments))
+                throw new Exception("Nie podano deklaracji.");
+
+            if (!assignments.EndsWith(';')) throw new Exception("Nie zakończono poprawnie deklaracji.");
+
+            string[] declarations = assignments.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            Regex identPattern = new Regex(@"^[A-Za-z][A-Za-z0-9#]*$");
+
+            foreach (string declaration in declarations)
             {
-                var trimmed = line.Trim();
-                if (DeclarationTypes.Any(k => trimmed.StartsWith(k)))
-                {
-                    var match = Regex.Match(trimmed, @"(\w+)\s+([\w,\s]+)", RegexOptions.IgnoreCase);
-                    if (match.Success)
-                    {
-                        var group2Value = match.Groups[2].Value;
-                        var variables = new List<string>(group2Value.Split(',', StringSplitOptions.TrimEntries).Where(v => !string.IsNullOrWhiteSpace(v))
-                        );
-                        var declaration = new DeclarationNode
-                        (                     
-                            match.Groups[1].Value,
-                            variables
-                        );
-                        query.addChild(declaration);
-                        //query.Children.Add(declaration);
-                    }
-                }
-                else if (trimmed.StartsWith("Select"))
-                {
-                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+)", RegexOptions.IgnoreCase);
-                    if (match.Success)
-                    {
-                        var selectVar = match.Groups[1].Value;
-                        var clausePart = match.Groups[2].Value;
+                if (string.IsNullOrEmpty(declaration.Trim()))
+                    continue;
 
-                        var clauses = ParseClauses(clausePart);
+                string[] parts = declaration.Trim().Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
 
-                        var selectNode = new SelectNode
-                        (
-                            selectVar,
-                            clauses
-                        );
-                       
-                        query.addChild(selectNode);
-                    }
+                if (parts.Length < 2)
+                    throw new Exception($"Niepełna deklaracja: '{declaration.Trim()}' (brakuje identyfikatorów)");
+
+                if (!declarationTypes.Contains(parts[0]))
+                    throw new Exception($"Niepoprawny typ encji: '{parts[0]}' w deklaracji: '{declaration.Trim()}'");
+
+                string[] synonyms = parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string s in synonyms)
+                {
+                    string synonym = s.Trim();
+                    if (!identPattern.IsMatch(synonym) || declarationTypes.Contains(synonym))
+                        throw new Exception($"Niepoprawna nazwa identyfikatora: '{synonym}' w deklaracji: '{declaration.Trim()}'. (dozwolone tylko litery, cyfry i '#'. Pierwszy znak musi być literą)");
                 }
             }
-            return query;
-        }
 
-        public static List<ClauseNode> ParseClauses(string clausePart)
-        {
-            var clauseList = new List<ClauseNode>();
-            var parts = clausePart.Split("and", StringSplitOptions.TrimEntries);
-            foreach (var part in parts)
-            {
-                var match = Regex.Match(part, @"([\w\*]+)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)");
-                if (match.Success)
-                {
-                    clauseList.Add(new ClauseNode
-                    (
-                        match.Groups[1].Value,
-                        match.Groups[2].Value,
-                        match.Groups[3].Value
-                    ));
-                }
-            }
-            return clauseList;
-        }
-        public static void DrawTree(Node node, string indent = "", bool isLast = true)
-        {
-            Console.Write(indent);
-            Console.Write(isLast ? "└── " : "├── ");
-            Console.WriteLine(node.name);
-
-            indent += isLast ? "    " : "│   ";
-
-            for (int i = 0; i < node.children.Count; i++)
-            {
-                DrawTree(node.children[i], indent, i == node.children.Count - 1);
-            }
+            return "Deklaracja poprawna.";
         }
 
         public static string evaluateQuery(string query)
         {
             if (query == null || query == "") return "Nie podano zapytania.";
-            
+
             var matches = Regex.Matches(query, @"\"".*?\""|\w+[#*]?|[^\s\w]");
             string[] queryParts = new string[matches.Count];
 
@@ -149,5 +104,84 @@ namespace aitsi
             if (with[3].Trim() != "=") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '='.");
             return true;
         }
+
+        public static QueryNode Parse(string input)
+        {
+            var query = new QueryNode();
+            var lines = input.Split(';');
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (declarationTypes.Any(k => trimmed.StartsWith(k)))
+                {
+                    var match = Regex.Match(trimmed, @"(\w+)\s+([\w,\s]+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var group2Value = match.Groups[2].Value;
+                        var variables = new List<string>(group2Value.Split(',', StringSplitOptions.TrimEntries).Where(v => !string.IsNullOrWhiteSpace(v))
+                        );
+                        var declaration = new DeclarationNode
+                        (                     
+                            match.Groups[1].Value,
+                            variables
+                        );
+                        query.addChild(declaration);
+                    }
+                }
+                else if (trimmed.StartsWith("Select"))
+                {
+                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+)", RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        var selectVar = match.Groups[1].Value;
+                        var clausePart = match.Groups[2].Value;
+
+                        var clauses = ParseClauses(clausePart);
+
+                        var selectNode = new SelectNode
+                        (
+                            selectVar,
+                            clauses
+                        );
+                       
+                        query.addChild(selectNode);
+                    }
+                }
+            }
+            return query;
+        }
+
+        public static List<ClauseNode> ParseClauses(string clausePart)
+        {
+            var clauseList = new List<ClauseNode>();
+            var parts = clausePart.Split("and", StringSplitOptions.TrimEntries);
+            foreach (var part in parts)
+            {
+                var match = Regex.Match(part, @"([\w\*]+)\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)");
+                if (match.Success)
+                {
+                    clauseList.Add(new ClauseNode
+                    (
+                        match.Groups[1].Value,
+                        match.Groups[2].Value,
+                        match.Groups[3].Value
+                    ));
+                }
+            }
+            return clauseList;
+        }
+        public static void DrawTree(Node node, string indent = "", bool isLast = true)
+        {
+            Console.Write(indent);
+            Console.Write(isLast ? "└── " : "├── ");
+            Console.WriteLine(node.name);
+
+            indent += isLast ? "    " : "│   ";
+
+            for (int i = 0; i < node.children.Count; i++)
+            {
+                DrawTree(node.children[i], indent, i == node.children.Count - 1);
+            }
+        }     
     }
 }

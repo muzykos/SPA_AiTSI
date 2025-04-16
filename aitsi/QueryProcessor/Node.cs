@@ -40,7 +40,10 @@ public abstract class Node
 
 public class QueryNode : Node
 {
-    public QueryNode() { this.name = "Query"; }
+    public QueryNode() 
+    { 
+        this.name = "Query";
+    }
 }
 
 public class DeclarationNode : Node
@@ -48,6 +51,7 @@ public class DeclarationNode : Node
     public DeclarationNode(string type, List<string> variables) 
     { 
         this.name = $"Declaration: {type} ({string.Join(", ", variables)})"; 
+        this.type = type;
         this.variables = variables;
     }
 }
@@ -70,6 +74,7 @@ public class ClauseNode : Node
     public ClauseNode(string relation, string left, string right)
     {
         this.name = $"Clause: {relation}({left}, {right})";
+        this.relation = relation;
         this.variables.Add(left);
         this.variables.Add(right);
     }

@@ -1,4 +1,6 @@
-﻿namespace aitsi.QueryProcessor
+﻿using System.Text.RegularExpressions;
+
+namespace aitsi.QueryProcessor
 {
     internal class QueryValidator
     {
@@ -6,45 +8,55 @@
 
         public static string evaluateQueryLogic(QueryNode tree)
         {
-            
+            checkDuplicates(tree);
             validateReturnParameter(tree);                      
             
             return "Sprawdzam";
         }
+
+        private static void checkDuplicates(QueryNode tree)
+        {
+            Node[] declarations = tree.getChildreenByName("Declaration");
+            List<string> variables = new List<string>();
+            foreach (Node declaration in declarations)
+            {
+                foreach(string variable in declaration.variables)
+                {
+                    if (variables.Contains(variable)) throw new Exception("Na liście zmiennych znajdują się duplikaty. Duplikat: " + variable);
+                    variables.Add(variable);
+                }
+            }
+        }
+
         private static bool validateReturnParameter(QueryNode tree)
         {
+            if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość."); 
             string returnValue = tree.getChildByName("select").variables[0];
-            Node[] declarations = tree.getChildreenByName("Declaration");
-
             if (allowedValuesInReturnParameter.Contains(returnValue)) return true;
-            if (int.TryParse(returnValue, out _)) return true;
-            foreach (Node declaration in declarations)
-                if (declaration.variables.Contains(returnValue)) return true;
-            
+            if (validateSynonym(tree, returnValue)) return true;
             throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
         }
 
-        private static bool validateIfStmtRef(string value)
+        private static bool validateSynonym(QueryNode tree, string value)
+        {
+            Node[] declarations = tree.getChildreenByName("Declaration");
+            foreach (Node declaration in declarations)
+                if (declaration.variables.Contains(value)) return true;
+            return false;
+        }
+
+        private static bool validateIfStmtRef(QueryNode tree, string value)
         {
             if (value == "_") return true;
             if (int.TryParse(value, out _)) return true;
-
-            foreach (string key in QueryPreProcessor.assignmentsList.Keys)
-                if (QueryPreProcessor.assignmentsList[key].Contains(value)) return true;
-
-            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+            if (validateSynonym(tree, value)) return true;
+            throw new Exception("Podano nieprawidłową wartość jako stmtRef. Podana wartość: " + value);
         }
 
-        private static bool checkIfIDENT(QueryNode tree, string value)
+        private static bool checkIfIDENT(string value)
         {
-            Node[] declarations = tree.getChildreenByName("Declaration");
-
-            if (allowedValuesInReturnParameter.Contains(value)) return true;
-            if (int.TryParse(value, out _)) return true;
-            foreach (Node declaration in declarations)
-                if (declaration.variables.Contains(value)) return true;
-
-            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*$")) throw new Exception("Zmienna może składać się tylko z liter, cyfr i '#'. Błędna zmienna: " + value);
+            return true;
         }
     }
 }
