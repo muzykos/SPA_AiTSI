@@ -9,7 +9,7 @@ namespace aitsi.QueryProcessor
         public static string evaluateQueryLogic(QueryNode tree)
         {
             checkDuplicates(tree);
-            validateReturnParameter(tree);                      
+            validateReturnParameter(tree);
             
             return "Sprawdzam";
         }
@@ -48,14 +48,34 @@ namespace aitsi.QueryProcessor
         private static bool validateIfStmtRef(QueryNode tree, string value)
         {
             if (value == "_") return true;
-            if (int.TryParse(value, out _)) return true;
+            if (validateIfInteger(value)) return true;
             if (validateSynonym(tree, value)) return true;
             throw new Exception("Podano nieprawidłową wartość jako stmtRef. Podana wartość: " + value);
         }
 
-        private static bool checkIfIDENT(string value)
+        private static bool validateIfEntRef(QueryNode tree, string value)
         {
-            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*$")) throw new Exception("Zmienna może składać się tylko z liter, cyfr i '#'. Błędna zmienna: " + value);
+            if (value == "_") return true;
+            if (validateSynonym(tree, value)) return true;
+            if(value.StartsWith("\"") && value.EndsWith("\"") && !validateIfIDENT(value.Substring(1, value.Length-2)))throw new Exception("Zmienna może składać się tylko z liter, cyfr i '#'. Błędna zmienna: " + value);
+            throw new Exception("Podano nieprawidłową wartość jako entRef. Podana wartość: " + value);
+        }
+
+        private static bool validateIfName(string value)
+        {
+            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*$")) return false;
+            return true;
+        }
+
+        private static bool validateIfInteger(string value)
+        {
+            if (!Regex.IsMatch(value, @"^[0-9]*$")) return false;
+            return true;
+        }
+
+        private static bool validateIfIDENT(string value)
+        {
+            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9#]*$")) return false;
             return true;
         }
     }
