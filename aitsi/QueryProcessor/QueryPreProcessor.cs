@@ -130,18 +130,22 @@ namespace aitsi
                 }
                 else if (trimmed.StartsWith("Select"))
                 {
-                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+)", RegexOptions.IgnoreCase);
+                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+?)(?:\s+with\s+(.+))?$", RegexOptions.IgnoreCase);
                     if (match.Success)
                     {
                         var selectVar = match.Groups[1].Value;
                         var clausePart = match.Groups[2].Value;
+                        var withPart = match.Groups[3].Success ? match.Groups[3].Value : null;
 
                         var clauses = ParseClauses(clausePart);
+                        //var withs = withPart != null ? ParseWiths(withPart) : null;
+                        //trzeba parsowac witha
 
                         var selectNode = new SelectNode
                         (
                             selectVar,
                             clauses
+                            //withs
                         );
                        
                         query.addChild(selectNode);

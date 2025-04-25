@@ -40,17 +40,17 @@ public abstract class Node
 
 public class QueryNode : Node
 {
-    public QueryNode() 
-    { 
+    public QueryNode()
+    {
         this.name = "Query";
     }
 }
 
 public class DeclarationNode : Node
 {
-    public DeclarationNode(string type, List<string> variables) 
-    { 
-        this.name = $"Declaration: {type} ({string.Join(", ", variables)})"; 
+    public DeclarationNode(string type, List<string> variables)
+    {
+        this.name = $"Declaration: {type} ({string.Join(", ", variables)})";
         this.type = type;
         this.variables = variables;
     }
@@ -58,14 +58,14 @@ public class DeclarationNode : Node
 
 public class SelectNode : Node
 {
-    public SelectNode(string variable, List<ClauseNode> clauses)
+    public SelectNode(string variable, List<ClauseNode> clauses, List<WithNode> withs)
     {
         this.name = $"Select: {variable}";
         this.variables.Add(variable);
         foreach (var clause in clauses)
-        {
             this.addChild(clause);
-        }
+        foreach (var with in withs)
+            this.addChild(with);
     }
 }
 
@@ -75,6 +75,16 @@ public class ClauseNode : Node
     {
         this.name = $"Clause: {relation}({left}, {right})";
         this.relation = relation;
+        this.variables.Add(left);
+        this.variables.Add(right);
+    }
+}
+
+public class WithNode : Node
+{
+        public WithNode(string left, string right)
+    {
+        this.name = $"With:({left}, {right})";
         this.variables.Add(left);
         this.variables.Add(right);
     }
