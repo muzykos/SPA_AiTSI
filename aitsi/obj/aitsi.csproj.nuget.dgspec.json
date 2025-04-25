@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\pabu2\\Desktop\\Projekty GitHub\\SPA_AiTSI\\aitsi\\aitsi.csproj": {}
+    "C:\\Users\\alexw\\Source\\Repos\\SPA_AiTSI\\aitsi\\aitsi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\pabu2\\Desktop\\Projekty GitHub\\SPA_AiTSI\\aitsi\\aitsi.csproj": {
+    "C:\\Users\\alexw\\Source\\Repos\\SPA_AiTSI\\aitsi\\aitsi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\pabu2\\Desktop\\Projekty GitHub\\SPA_AiTSI\\aitsi\\aitsi.csproj",
+        "projectUniqueName": "C:\\Users\\alexw\\Source\\Repos\\SPA_AiTSI\\aitsi\\aitsi.csproj",
         "projectName": "aitsi",
-        "projectPath": "C:\\Users\\pabu2\\Desktop\\Projekty GitHub\\SPA_AiTSI\\aitsi\\aitsi.csproj",
-        "packagesPath": "C:\\Users\\pabu2\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\pabu2\\Desktop\\Projekty GitHub\\SPA_AiTSI\\aitsi\\obj\\",
+        "projectPath": "C:\\Users\\alexw\\Source\\Repos\\SPA_AiTSI\\aitsi\\aitsi.csproj",
+        "packagesPath": "C:\\Users\\alexw\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\alexw\\Source\\Repos\\SPA_AiTSI\\aitsi\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\pabu2\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\alexw\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -44,8 +44,7 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.100"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -66,7 +65,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
