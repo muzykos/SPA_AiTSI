@@ -21,8 +21,8 @@ namespace aitsi.Parser
         }
 
         public void setRoot(TNode node)
-        { 
-            this.root = node; 
+        {
+            this.root = node;
         }
 
         public TNode getRoot()
@@ -67,24 +67,35 @@ namespace aitsi.Parser
             a.setFollows(b);
         }
 
-        public TNode getFollows (TNode a)
+        public TNode getFollows(TNode a)
         {
             return a.getFollows();
         }
 
-        public bool isFollowed (TNode a, TNode b)
+        public bool isFollowed(TNode a, TNode b)
         {
             return a.getFollows() == b;
         }
 
-        public TNode getParent (TNode child)
+        public TNode getParent(TNode child)
         {
             return child.getParent();
         }
 
-        public bool isFollowed(TNode a, TNode b)
+        public static void PrintAST(TNode node, int indent)
         {
-            return (getFollows(a) == b);
+            Console.WriteLine(new string(' ', indent * 2) + $"{node.getType()} ({node.getAttr()})");
+
+            foreach (var child in node.getChildren())
+            {
+                PrintAST(child, indent + 1);
+            }
+
+            var follows = node.getFollows();
+            if (follows != null)
+            {
+                Console.WriteLine(new string(' ', indent * 2) + $"FOLLOWS -> {follows.getType()} ({follows.getAttr()})");
+            }
         }
     }
 }

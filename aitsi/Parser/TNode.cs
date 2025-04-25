@@ -11,11 +11,23 @@ namespace aitsi.Parser
         private TType type;
         private int stmtNumber;
         private string attr;
-        private TNode parentNode;
-        private List<TNode> children;
-        private TNode follows;
+        private TNode? parentNode;
+        private List<TNode> children = [];
+        private TNode? follows;
 
-        public void setType (TType type)
+        public TNode()
+        {
+            this.type = default;
+            this.attr = "";
+        }
+
+        public TNode(TType type, string attr)
+        {
+            this.type = type;
+            this.attr = attr;
+        }
+
+        public void setType(TType type)
         {
             this.type = type;
         }
@@ -42,7 +54,7 @@ namespace aitsi.Parser
 
         public void setParent(TNode parent)
         {
-            throw new NotImplementedException();
+            parentNode = parent;
         }
 
         public List<TNode> getChildren()
@@ -55,12 +67,12 @@ namespace aitsi.Parser
             follows = b;
         }
 
-        public TNode getFollows()
+        public TNode? getFollows()
         {
             return follows;
         }
 
-        public TNode getParent()
+        public TNode? getParent()
         {
             return parentNode;
         }
