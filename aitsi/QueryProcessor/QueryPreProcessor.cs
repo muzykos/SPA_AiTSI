@@ -4,7 +4,7 @@ namespace aitsi
 {
     static class QueryPreProcessor
     {
-        public static string[] allowedRelRefs = ["modifies", "uses", "parent", "follows", "parent*", "follows*"];
+        public static string[] allowedRelRefs = ["modifies", "uses", "parent", "parent*", "follows", "follows*", "calls", "calls*"];
         public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
 
         public static string evaluateAssignments(string assignments)
@@ -47,14 +47,15 @@ namespace aitsi
         {
             if (query == null || query == "") return "Nie podano zapytania.";
 
-            var matches = Regex.Matches(query, @"\"".*?\""|\w+[#*]?|[^\s\w]");
+            var matches = Regex.Matches(query, @"\"".*?\""|\w+(?:\.\w+)*[#*]?|[^\s\w]");
             string[] queryParts = new string[matches.Count];
 
             for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
 
-            //foreach (var item in queryParts) Console.WriteLine(item);
+            foreach (var item in queryParts) Console.WriteLine(item);
 
             validateIfStartsWithSelect(queryParts[0]);
+            string previous = "";
 
             for (int i = 2; i < queryParts.Length; i++)
             {
@@ -63,13 +64,29 @@ namespace aitsi
                     case "such":
                         if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystąpiło 'that'.");
                         i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
+                        previous = "such that";
                         break;
                     case "with":
                         validateWith(queryParts.Skip(i + 1).ToArray());
                         i += 5;
+                        previous = "with";
+                        break;
+                    case "and":
+                        switch (previous)
+                        {
+                            case "": throw new Exception("Podano wartość 'and' przed klauzulami 'such that' bądź 'with'.");
+                            case "such that":
+                                i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
+                                break;
+                            case "with":
+                                validateWith(queryParts.Skip(i + 1).ToArray());
+                                i += 5;
+                                break;
+                            default: throw new Exception("Wystąpił nieznany błąd. Funkcja: evaluateQuery");
+                        }                       
                         break;
                     default:
-                        return "Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i];
+                        throw new Exception("Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i]);
                 }
             }
 
@@ -85,7 +102,7 @@ namespace aitsi
         private static int validateSuchThat(string[] suchThat)
         {
             if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiednią wartość po 'such that': " + suchThat[0]);
-            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierającego po rederencji.");
+            if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierającego po relacji.");
 
             for (int i = 2; i < suchThat.Length; i++)
             {
@@ -100,8 +117,9 @@ namespace aitsi
 
         private static bool validateWith(string[] with)
         {
-            if (with[1].Trim() != ".") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '.' pomiędzy synonimem a nazwą atrybutu.");
-            if (with[3].Trim() != "=") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '='.");
+            var leftSide = with[0].Split('.');
+            if (leftSide.Length != 2) throw new Exception("Lewa strona równania w 'with' nie posiada znaku '.'.");
+            if (with[1].Trim() != "=") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '='.");
             return true;
         }
 
@@ -178,15 +196,17 @@ namespace aitsi
         public static List<WithNode> ParseWiths(string withPart)
         {
             var withList = new List<WithNode>();
+            var parts = withPart.Split("and", StringSplitOptions.TrimEntries);
+            foreach (var part in parts)
+            {
+                var values = part.Split("=");
+                withList.Add(new WithNode
+                (
+                    values[0].Trim(),
+                    values[1].Trim()
+                ));
+            }
 
-            var values = withPart.Split("=");
-            
-            withList.Add(new WithNode
-            (
-                values[0].Trim(),
-                values[1].Trim()
-            ));
-            
             return withList;
         }
 

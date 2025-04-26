@@ -22,17 +22,29 @@ namespace aitsi.QueryProcessor
             Node[] declarations = tree.getChildreenByName("With");
             foreach (Node declaration in declarations)
             {
-                validateSynonym(tree.parent, declaration.variables[0].Substring(0, declaration.variables[0].IndexOf('.')));
-                validateRef(declaration.variables[1]);
+                if (validateRef(tree.parent, declaration.variables[0]) != validateRef(tree.parent, declaration.variables[1])) throw new Exception("Wartości podane w 'with' muszą być tego samego typu.");
             }
         }
 
-        private static bool validateRef(string value)
+        private static string validateRef(Node tree, string value)
         {
-            if(validateIfInteger(value)) return true;
+            string isAttrRef = validateIfAttrRef(tree, value);
+            if (isAttrRef != null) return isAttrRef;
+            if (validateSynonym(tree, value, "prog_line")) return "integer";
             string pattern = "(\"?)";
-            if (!validateIfIDENT(Regex.Replace(value, pattern, String.Empty))) return true;
-            return false;
+            if (validateIfIDENT(Regex.Replace(value, pattern, String.Empty))) return "charstr";
+            if (validateIfInteger(value)) return "integer";
+            throw new Exception("Podano błędną wartość w 'with'. Wartość: " + value);
+        }
+
+        private static string validateIfAttrRef(Node tree, string value)
+        {
+            if (value == null) return null;
+            var parts = value.Split('.');
+            if (parts.Length < 2) return null;
+            if (!validateSynonym(tree, parts[0]))return null;
+            if (parts[1].EndsWith('#')) return "integer";
+            return "charstr";
         }
 
         private static void validateClauses(SelectNode tree)
@@ -51,10 +63,13 @@ namespace aitsi.QueryProcessor
                     case "Parent*":
                     case "Follows":
                     case "Follows*":
-                        Console.WriteLine("validateClauses: " + declaration.variables[0]);
-                        Console.WriteLine("validateClauses: " + declaration.variables[1]);
                         validateIfStmtRef(tree.parent, declaration.variables[0]);
                         validateIfStmtRef(tree.parent, declaration.variables[1]);                        
+                        break;
+                    case "Calls":
+                    case "Calls*":
+                        validateIfEntRef(tree.parent, declaration.variables[0]);
+                        validateIfEntRef(tree.parent, declaration.variables[1]);
                         break;
                     default:
                         throw new Exception("Podana relacja nie została jeszcze zaimplementowana.");
@@ -80,17 +95,20 @@ namespace aitsi.QueryProcessor
         {
             if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość."); 
             string returnValue = tree.getChildByName("select").variables[0];
-            if (allowedValuesInReturnParameter.Contains(returnValue)) return true;
+            if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
             if (validateSynonym(tree, returnValue)) return true;
             throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
         }
 
-        private static bool validateSynonym(Node tree, string value)
+        private static bool validateSynonym(Node tree, string value, string type = "")
         {
             Node[] declarations = tree.getChildreenByName("Declaration");
-            if(!validateIfIDENT(value)) throw new Exception("Podana wartość nie jest synonimem. Wartość: " + value);
+            if(!validateIfIDENT(value)) return false;
             foreach (Node declaration in declarations)
-                if (declaration.variables.Contains(value)) return true;
+            {
+                if (declaration.variables.Contains(value) && type != "" && declaration.type.ToLower() == type) return true;
+                else if (declaration.variables.Contains(value) && type == "") return true;
+            }          
             return false;
         }
 
@@ -124,7 +142,7 @@ namespace aitsi.QueryProcessor
 
         private static bool validateIfIDENT(string value)
         {
-            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9#]*$")) return false;
+            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*(#)?$")) return false;
             return true;
         }
     }
