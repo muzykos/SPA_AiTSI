@@ -138,15 +138,15 @@ namespace aitsi
                         var withPart = match.Groups[3].Success ? match.Groups[3].Value : null;
 
                         var clauses = ParseClauses(clausePart);
-                        //var withs = withPart != null ? ParseWiths(withPart) : null;
-                        //trzeba parsowac witha
+                        var withs = withPart != null ? ParseWiths(withPart) : null;
 
                         var selectNode = new SelectNode
                         (
                             selectVar,
-                            clauses
-                            //withs
+                            clauses,
+                            withs
                         );
+                        selectNode.parent = query;
                        
                         query.addChild(selectNode);
                     }
@@ -174,6 +174,22 @@ namespace aitsi
             }
             return clauseList;
         }
+
+        public static List<WithNode> ParseWiths(string withPart)
+        {
+            var withList = new List<WithNode>();
+
+            var values = withPart.Split("=");
+            
+            withList.Add(new WithNode
+            (
+                values[0].Trim(),
+                values[1].Trim()
+            ));
+            
+            return withList;
+        }
+
         public static void DrawTree(Node node, string indent = "", bool isLast = true)
         {
             Console.Write(indent);
