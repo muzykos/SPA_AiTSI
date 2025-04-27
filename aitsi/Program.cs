@@ -1,46 +1,28 @@
-﻿using aitsi;
-using aitsi.Parser;
-
+﻿using System.Text.RegularExpressions;
+using static aitsi.QueryPreProcessor;
+using static aitsi.QueryProcessor.QueryValidator;
 class Program { 
     static void Main(String[] args)
     {
-        string source = @"
-        procedure main {
-            x = 5 + 3;
-            y = x + 1;
-            while y {
-                x = x + 1;
-            }
-        }";
-
-        var lexer = new Lexer(source);
-        var ast = new AST();
-        var parser = new Parser(lexer, ast);
-
         try
         {
-            parser.parseProcedure();
+            Console.WriteLine("Proszę podać zapytanie: ");
+            string query = Console.ReadLine();
+            var queryParts = Regex.Split(query, @"(?=select)", RegexOptions.IgnoreCase);
+            if (queryParts.Length < 2)
+                throw new Exception("Brak słowa 'select' w zapytaniu.");
 
-            QueryEvaluator.SetAST(ast);
-            Console.WriteLine("test:");
-            Console.WriteLine("Follows(1,2): " + QueryEvaluator.EvaluateFollows(1, 2));
-            Console.WriteLine("Parent(3,4): " + QueryEvaluator.EvaluateParent(3, 4));
-
-            Console.WriteLine("Parsing completed successfully!\n");
-            AST.PrintAST(ast.getRoot(), 0);
+            Console.WriteLine(evaluateAssignments(queryParts[0].Trim()));
+            Console.WriteLine(evaluateQuery(queryParts[1].Trim()));
+            QueryNode PQLTree = Parse(query.Trim());
+            DrawTree(PQLTree);
+            Console.WriteLine(evaluateQueryLogic(PQLTree));
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            Console.WriteLine($"Parsing error: {ex.Message}");
+            Console.WriteLine(e.Message);
         }
-
-        // Console.WriteLine("Proszę podać deklaracje zmiennych:");
-        // string assignments = Console.ReadLine();
-        // Console.WriteLine(QueryValidator.evaluateAssignments(assignments));
-
-        // Console.WriteLine("Proszę podać zapytanie:");
-        // string query = Console.ReadLine();
-        // Console.WriteLine(QueryProcessor.evaluateQuery(query));
+        
     }
 
 }
