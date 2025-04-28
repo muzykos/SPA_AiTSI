@@ -52,7 +52,7 @@ namespace aitsi
 
             for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
 
-            foreach (var item in queryParts) Console.WriteLine(item);
+            //foreach (var item in queryParts) Console.WriteLine(item);
 
             validateIfStartsWithSelect(queryParts[0]);
             string previous = "";
