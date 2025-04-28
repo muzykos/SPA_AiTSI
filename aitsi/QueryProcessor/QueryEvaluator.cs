@@ -1,73 +1,6 @@
-//using aitsi.Parser;
+using aitsi.Parser;
+using ParserTNode = aitsi.Parser.TNode;
 
-//namespace aitsi
-//{
-//    static class QueryEvaluator
-//    {
-//        private static AST ast;
-
-//        public static void SetAST(AST astTree)
-//        {
-//            ast = astTree;
-//        }
-
-//        public static bool EvaluateFollows(int stmt1, int stmt2)
-//        {
-//            if (ast == null) throw new Exception("AST nie zosta³ ustawiony.");
-//            aitsi.Parser.TNode root = ast.getRoot();
-//            return FindFollows(root, stmt1, stmt2);
-//        }
-
-//        public static bool EvaluateParent(int stmt1, int stmt2)
-//        {
-//            if (ast == null) throw new Exception("AST nie zosta³ ustawiony.");
-//            aitsi.Parser.TNode root = ast.getRoot();
-//            return FindParent(root, stmt1, stmt2);
-//        }
-
-//        private static bool FindFollows(aitsi.Parser.TNode node, int stmt1, int stmt2)
-//        {
-//            if (node == null) return false;
-
-//            if (node.getAttr() == stmt1.ToString())
-//            {
-//                var follows = node.getFollows();
-//                if (follows != null && follows.getAttr() == stmt2.ToString())
-//                    return true;
-//            }
-
-//            foreach (var child in node.getChildren())
-//            {
-//                if (FindFollows(child, stmt1, stmt2))
-//                    return true;
-//            }
-
-//            return false;
-//        }
-
-//        private static bool FindParent(aitsi.Parser.TNode node, int stmt1, int stmt2)
-//        {
-//            if (node == null) return false;
-
-//            if (node.getAttr() == stmt1.ToString())
-//            {
-//                foreach (var child in node.getChildren())
-//                {
-//                    if (child.getAttr() == stmt2.ToString())
-//                        return true;
-//                }
-//            }
-
-//            foreach (var child in node.getChildren())
-//            {
-//                if (FindParent(child, stmt1, stmt2))
-//                    return true;
-//            }
-
-//            return false;
-//        }
-//    }
-//}
 
 namespace aitsi
 {
@@ -98,20 +31,103 @@ namespace aitsi
 
         private static List<string> GetAllPossibleValues(string variable, QueryNode tree, PKB pkb)
         {
-            //wszystkie mozliwe wartosci dla zmiennej
-            return pkb.GetEntitiesForSynonym(variable, tree);
+            var entityType = tree.getChildByType("Declaration")?.type ?? "";
+
+            if (entityType == "stmt")
+            {
+                return pkb.GetStatementTable().Keys.Select(x => x.ToString()).ToList();
+            }
+            else if (entityType == "variable")
+            {
+                return pkb.GetVariableTable().Keys.ToList();
+            }
+            else if (entityType == "constant")
+            {
+                return pkb.GetConstantTable().Keys.ToList();
+            }
+            else if (entityType == "procedure")
+            {
+                return pkb.GetProcedureTable().Keys.ToList();
+            }
+
+            return new List<string>();
         }
 
         private static List<string> ApplyClause(List<string> currentResults, ClauseNode clause, PKB pkb)
         {
-            // TODO: przefiltruj currentResults na podstawie relacji w PKB
-            return pkb.FilterByClause(currentResults, clause);
+            return FilterByClause(currentResults, clause, pkb);
         }
 
         private static List<string> ApplyWith(List<string> currentResults, WithNode with, PKB pkb)
         {
-            // TODO: przefiltruj currentResults na podstawie porównania z with
-            return pkb.FilterByWith(currentResults, with);
+            return FilterByWith(currentResults, with, pkb);
+        }
+
+
+
+        private static List<string> FilterByClause(List<string> currentResults, ClauseNode clause, PKB pkb)
+        {
+            List<string> filteredResults = new();
+
+            var modifiesMap = pkb.GetModifiesMap();
+            var usesMap = pkb.GetUsesMap();
+            var parentStarMap = pkb.GetParentStarMap();
+            var followsStarMap = pkb.GetFollowsStarMap();
+
+            foreach (var result in currentResults)
+            {
+                if (int.TryParse(result, out int stmtNumber))
+                {
+                    var statementTable = pkb.GetStatementTable();
+                    if (statementTable.TryGetValue(stmtNumber, out ParserTNode stmtNode))
+                    {
+                        bool satisfies = false;
+
+                        if (clause.relation == "Modifies")
+                        {
+                            satisfies = modifiesMap.TryGetValue(stmtNode, out var modifiedVars) &&
+                                        modifiedVars.Any(v => v.getAttr() == clause.variables[1]);
+                        }
+                        else if (clause.relation == "Uses")
+                        {
+                            satisfies = usesMap.TryGetValue(stmtNode, out var usedVars) &&
+                                        usedVars.Any(v => v.getAttr() == clause.variables[1]);
+                        }
+                        else if (clause.relation == "Parent")
+                        {
+                            satisfies = parentStarMap.TryGetValue(stmtNode, out var parents) &&
+                                        parents.Any(p => p.getAttr() == clause.variables[1]);
+                        }
+                        else if (clause.relation == "Follows")
+                        {
+                            satisfies = followsStarMap.TryGetValue(stmtNode, out var followers) &&
+                                        followers.Any(f => f.getAttr() == clause.variables[1]);
+                        }
+
+                        if (satisfies)
+                        {
+                            filteredResults.Add(result);
+                        }
+                    }
+                }
+            }
+
+            return filteredResults;
+        }
+
+        private static List<string> FilterByWith(List<string> currentResults, WithNode with, PKB pkb)
+        {
+            List<string> filteredResults = new();
+
+            foreach (var result in currentResults)
+            {
+                if (with.variables.Contains(result))
+                {
+                    filteredResults.Add(result);
+                }
+            }
+
+            return filteredResults;
         }
     }
 }
