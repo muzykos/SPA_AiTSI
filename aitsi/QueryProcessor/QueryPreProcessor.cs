@@ -83,7 +83,7 @@ namespace aitsi
                                 i += 5;
                                 break;
                             default: throw new Exception("Wystąpił nieznany błąd. Funkcja: evaluateQuery");
-                        }                       
+                        }
                         break;
                     default:
                         throw new Exception("Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i]);
@@ -139,7 +139,7 @@ namespace aitsi
                         var variables = new List<string>(group2Value.Split(',', StringSplitOptions.TrimEntries).Where(v => !string.IsNullOrWhiteSpace(v))
                         );
                         var declaration = new DeclarationNode
-                        (                     
+                        (
                             match.Groups[1].Value,
                             variables
                         );
@@ -148,24 +148,60 @@ namespace aitsi
                 }
                 else if (trimmed.StartsWith("Select"))
                 {
-                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+such that\s+(.+?)(?:\s+with\s+(.+))?$", RegexOptions.IgnoreCase);
+                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+(.+)", RegexOptions.IgnoreCase);
                     if (match.Success)
                     {
                         var selectVar = match.Groups[1].Value;
-                        var clausePart = match.Groups[2].Value;
-                        var withPart = match.Groups[3].Success ? match.Groups[3].Value : null;
-
-                        var clauses = ParseClauses(clausePart);
-                        var withs = withPart != null ? ParseWiths(withPart) : null;
-
-                        var selectNode = new SelectNode
-                        (
-                            selectVar,
-                            clauses,
-                            withs
-                        );
+                        var remainingPart = match.Groups[2].Value;
+                        var selectNode = new SelectNode(selectVar);
+                        while (!string.IsNullOrEmpty(remainingPart))
+                        {
+                            if (remainingPart.StartsWith("such that", StringComparison.OrdinalIgnoreCase))
+                            {
+                                remainingPart = remainingPart.Substring(9).Trim();
+                                var clauseMatch = Regex.Match(remainingPart, @"([\w\*]+)\s*\(([^,]+),\s*([^)]+)\)", RegexOptions.IgnoreCase);
+                                if (clauseMatch.Success)
+                                {
+                                    var relation = clauseMatch.Groups[1].Value.Trim();
+                                    var left = clauseMatch.Groups[2].Value.Trim();
+                                    var right = clauseMatch.Groups[3].Value.Trim();
+                                    var clauseNode = new ClauseNode(relation, left, right);
+                                    selectNode.addChild(clauseNode);
+                                    int Index = clauseMatch.Index + clauseMatch.Length;
+                                    remainingPart = remainingPart.Substring(Index).Trim();
+                                }
+                            }
+                            else if (remainingPart.StartsWith("with", StringComparison.OrdinalIgnoreCase))
+                            {
+                                remainingPart = remainingPart.Substring(4).Trim();
+                                var withMatch = Regex.Match(remainingPart, @"(\w+\.\w+)\s*=\s*(\w+|""[^""]+"")", RegexOptions.IgnoreCase);
+                                if (withMatch.Success)
+                                {
+                                    var lefta = withMatch.Groups[1].Value.Trim();
+                                    var righta = withMatch.Groups[2].Value.Trim();
+                                    var withNode = new WithNode(lefta, righta);
+                                    selectNode.addChild(withNode);
+                                    int Index = withMatch.Index + withMatch.Length;
+                                    remainingPart = remainingPart.Substring(Index).Trim();
+                                }
+                            }
+                            else if (remainingPart.StartsWith("and", StringComparison.OrdinalIgnoreCase))
+                            {
+                                remainingPart = remainingPart.Substring(3).Trim();
+                                var clauseMatch = Regex.Match(remainingPart, @"([\w\*]+)\s*\(([^,]+),\s*([^)]+)\)", RegexOptions.IgnoreCase);
+                                if (clauseMatch.Success)
+                                {
+                                    var relation = clauseMatch.Groups[1].Value.Trim();
+                                    var left = clauseMatch.Groups[2].Value.Trim();
+                                    var right = clauseMatch.Groups[3].Value.Trim();
+                                    var clauseNode = new ClauseNode(relation, left, right);
+                                    selectNode.addChild(clauseNode);
+                                    int Index = clauseMatch.Index + clauseMatch.Length;
+                                    remainingPart = remainingPart.Substring(Index).Trim();
+                                }
+                            }
+                        }
                         selectNode.parent = query;
-                       
                         query.addChild(selectNode);
                     }
                 }
@@ -222,6 +258,6 @@ namespace aitsi
             {
                 DrawTree(node.children[i], indent, i == node.children.Count - 1);
             }
-        }     
+        }
     }
 }

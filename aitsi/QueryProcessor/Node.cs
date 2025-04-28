@@ -58,14 +58,10 @@ public class DeclarationNode : Node
 
 public class SelectNode : Node
 {
-    public SelectNode(string variable, List<ClauseNode> clauses, List<WithNode> withs)
+    public SelectNode(string variable)
     {
         this.name = $"Select: {variable}";
         this.variables.Add(variable);
-        foreach (var clause in clauses)
-            this.addChild(clause);
-        foreach (var with in withs)
-            this.addChild(with);
     }
 }
 
@@ -82,7 +78,7 @@ public class ClauseNode : Node
 
 public class WithNode : Node
 {
-        public WithNode(string left, string right)
+    public WithNode(string left, string right)
     {
         this.name = $"With:({left}, {right})";
         this.variables.Add(left);
