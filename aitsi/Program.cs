@@ -16,17 +16,22 @@ class Program {
         var lexer = new Lexer(source);
         var ast = new AST();
         var parser = new Parser(lexer, ast);
+        var pkb = new PKB(ast);
+
+
 
         try
         {
             parser.parseProcedure();
             Console.WriteLine("Parsing completed successfully!\n");
             AST.PrintAST(ast.getRoot(), 0);
+            pkb.PopulatePKB();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Parsing error: {ex.Message}");
         }
+        
 
         // Console.WriteLine("Proszę podać deklaracje zmiennych:");
         // string assignments = Console.ReadLine();

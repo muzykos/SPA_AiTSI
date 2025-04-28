@@ -1,4 +1,6 @@
-namespace aitsi
+using aitsi.Parser;
+
+namespace aitsi.Parser
 {
     class PKB
     {
@@ -10,112 +12,244 @@ namespace aitsi
         public static string[][] varTable;
         public static Proc[] procTable;
         public static TNode programTree;
-    }
 
-    class varTable
-    {
-        public int insertVar(string varName)
+
+        private AST ast;  
+
+        private Dictionary<int, TNode> statementTable;  
+        private Dictionary<string, List<TNode>> variableTable; 
+        private Dictionary<string, List<TNode>> constantTable;
+        private Dictionary<string, TNode> procedureTable; 
+
+        private Dictionary<TNode, HashSet<TNode>> modifiesMap;  
+        private Dictionary<TNode, HashSet<TNode>> usesMap; 
+        private Dictionary<TNode, HashSet<TNode>> parentStarMap;  
+        private Dictionary<TNode, HashSet<TNode>> followsStarMap; 
+
+        public PKB(AST ast)
         {
+            this.ast = ast;
+
+            statementTable = new Dictionary<int, TNode>();
+            variableTable = new Dictionary<string, List<TNode>>();
+            constantTable = new Dictionary<string, List<TNode>>();
+            procedureTable = new Dictionary<string, TNode>();
+
+            modifiesMap = new Dictionary<TNode, HashSet<TNode>>();
+            usesMap = new Dictionary<TNode, HashSet<TNode>>();
+            parentStarMap = new Dictionary<TNode, HashSet<TNode>>();
+            followsStarMap = new Dictionary<TNode, HashSet<TNode>>();
+
+        }
+
+        public void printPKB()
+        {
+            Console.WriteLine("statements "+statementTable.Count);
+            Console.WriteLine("variables "+variableTable.Count);
+            Console.WriteLine("constants " + constantTable.Count);
+            Console.WriteLine("procedures " + procedureTable.Count);
+            Console.WriteLine("modifies " +  modifiesMap.Count);
+            Console.WriteLine("uses " + usesMap.Count);
+            Console.WriteLine("parent " + parentStarMap.Count);
+            Console.WriteLine("follows " + followsStarMap.Count);
+        }
+
+        public void PopulatePKB()
+        {
+            TNode root = ast.getRoot();
+            if (root != null && ast.getType(root) == TType.Procedure)
+            {
+                string procName = ast.getAttr(root);
+                procedureTable[procName] = root;
+
+                ProcessStatements(root, ast.getChildren(root));
+            }
+        }
+
+        private void ProcessStatements(TNode parent, List<TNode> statements)
+        {
+            foreach (var stmt in statements)
+            {
+                int stmtNum = GetStatementNumber(stmt);
+                //if (stmtNum > 0)
+                //{
+                    statementTable[stmtNum] = stmt;
+                //}
+
+                switch (ast.getType(stmt))
+                {
+                    case TType.Assign:
+                        ProcessAssign(parent, stmt);
+                        break;
+                    case TType.While:
+                        ProcessWhile(parent, stmt);
+                        break;
+                }
+            }
+
+            ComputeTransitiveClosure();
+        }
+
+        private void ProcessAssign(TNode parent, TNode assignNode)
+        {
+            string varName = ast.getAttr(assignNode);
+
+            AddToModifies(assignNode, varName);
+            AddToModifies(parent, varName); 
+
+            List<TNode> children = ast.getChildren(assignNode);
+            if (children.Count > 0)
+            {
+                ProcessExpression(assignNode, parent, children[0]);
+            }
+        }
+
+        private void ProcessWhile(TNode parent, TNode whileNode)
+        {
+            string varName = ast.getAttr(whileNode);
+
+            AddToUses(whileNode, varName);
+            AddToUses(parent, varName);
+
+            ProcessStatements(whileNode, ast.getChildren(whileNode));
+        }
+
+        private void ProcessExpression(TNode stmt, TNode parent, TNode expr)
+        {
+            if (expr == null) return;
+
+            switch (ast.getType(expr))
+            {
+                case TType.Variable:
+                    string varName = ast.getAttr(expr);
+                    AddToUses(stmt, varName);
+                    AddToUses(parent, varName);
+
+                    if (!variableTable.ContainsKey(varName))
+                    {
+                        variableTable[varName] = new List<TNode>();
+                    }
+                    variableTable[varName].Add(expr);
+                    break;
+
+                case TType.Constant:
+                    string constValue = ast.getAttr(expr);
+
+                    if (!constantTable.ContainsKey(constValue))
+                    {
+                        constantTable[constValue] = new List<TNode>();
+                    }
+                    constantTable[constValue].Add(expr);
+                    break;
+
+                case TType.Plus:
+                    List<TNode> children = ast.getChildren(expr);
+                    if (children.Count >= 2)
+                    {
+                        ProcessExpression(stmt, parent, children[0]); 
+                        ProcessExpression(stmt, parent, children[1]); 
+                    }
+                    break;
+            }
+        }
+
+        private int GetStatementNumber(TNode node)
+        {
+            if (node == null) return -1;
+
+            //TType type = ast.getType(node);
+            //if (type == TType.Assign || type == TType.While)
+            {
+                // Extract statement number based on your implementation
+                //return int.Parse(node.getAttr().Split(':')[0]);
+            }
+
             return 1;
         }
 
-        public string getVarName(int index)
+        private void AddToModifies(TNode node, string varName)
         {
+            if (!modifiesMap.ContainsKey(node))
+            {
+                modifiesMap[node] = new HashSet<TNode>();
+            }
 
+            TNode varNode = GetOrCreateVariableNode(varName);
+            modifiesMap[node].Add(varNode);
         }
 
-        public int getVarIndex(string varName) { }
-
-        public int getSize() { }
-
-        public bool isIn(string varName) { }
-    }
-
-    class Ast
-    {
-        public TNode createTNode(TType type) { }
-
-        public void setRoot(TNode node) { }
-
-        public void setAttr(TNode node, string attr) { }
-
-        public void setFirstChild(TNode p, TNode c) { }
-
-        public void setChildOfLink(TNode c, TNode p) { }
-
-        public TNode getRoot() { }
-
-        public TType getType(TNode node) { }
-
-        public string getAttr(TNode node) { }
-
-        public TNode getFirstChild(TNode p) { }
-
-        public void setParent(TNode p, TNode c) { }
-
-        public TNode getParent(TNode c) { }
-
-        public TNode getParentStar(TNode c) { }
-
-        public void setFollows(TNode p, TNode c) { }
-
-        public TNode getFollows(TNode n) { }
-
-    }
-
-    class Modifies
-    {
-        public void setModifies(TNode node, TNode var) { }
-
-        List<TNode> getModified(TNode node) { }
-
-        bool isModified(TNode var,TNode node) {  }
-    }
-
-    class Parent {
-    void setParent(TNode p,TNode c) { }
-    List<TNode> getChildren(TNode node) { }
-
-    bool isParent(TNode p,TNode c) { }
-
-    }
-
-    class Follows {
-        void setFollows(TNode n1, TNode n2) { }
-        List<TNode> getFollowed(TNode node) { }
-
-        bool isFollowed(TNode n1, TNode n2) { }
-    }
-
-    class Uses {
-        void setUses(TNode p, TNode c) { }
-        List<TNode> getUsed(TNode node) { }
-
-        bool isUsed(TNode p, TNode c) { }
-    }
-
-    class Calls {
-        void setCalls(TNode p, TNode c) { }
-        List<TNode> getCalled(TNode node) { }
-
-        bool isCalled(TNode p, TNode c) { }
-    }
-
-    class Proc {
-        public int insertProc(string varName)
+        private void AddToUses(TNode node, string varName)
         {
-            return 1;
+            if (!usesMap.ContainsKey(node))
+            {
+                usesMap[node] = new HashSet<TNode>();
+            }
+
+            TNode varNode = GetOrCreateVariableNode(varName);
+            usesMap[node].Add(varNode);
         }
 
-        public string getProcName(int index)
+        private TNode GetOrCreateVariableNode(string varName)
         {
+            if (variableTable.ContainsKey(varName) && variableTable[varName].Count > 0)
+            {
+                return variableTable[varName][0];
+            }
 
+            TNode varNode = ast.createTNode(TType.Variable, varName, -1);
+
+            if (!variableTable.ContainsKey(varName))
+            {
+                variableTable[varName] = new List<TNode>();
+            }
+            variableTable[varName].Add(varNode);
+
+            return varNode;
         }
 
-        public int getProcIndex(string varName) { }
+        private void ComputeTransitiveClosure()
+        {
+            // Parent* relationship
+            foreach (var entry in statementTable)
+            {
+                TNode stmt = entry.Value;
+                parentStarMap[stmt] = new HashSet<TNode>();
 
-        public int getSize() { }
+                // Direct parent
+                TNode parent = ast.getParent(stmt);
+                if (parent != null && ast.getType(parent) != TType.Procedure)
+                {
+                    parentStarMap[stmt].Add(parent);
 
-        public bool isIn(string varName) { }
+                    // Add all ancestors
+                    while ((parent = ast.getParent(parent)) != null && ast.getType(parent) != TType.Procedure)
+                    {
+                        parentStarMap[stmt].Add(parent);
+                    }
+                }
+            }
+
+            // Follows* relationship
+            foreach (var entry in statementTable)
+            {
+                TNode stmt = entry.Value;
+                followsStarMap[stmt] = new HashSet<TNode>();
+
+                // Direct follows
+                TNode follows = ast.getFollows(stmt);
+                if (follows != null)
+                {
+                    followsStarMap[stmt].Add(follows);
+
+                    // Add all statements that follow transitively
+                    while ((follows = ast.getFollows(follows)) != null)
+                    {
+                        followsStarMap[stmt].Add(follows);
+                    }
+                }
+            }
+        }
     }
+
+ 
 }
