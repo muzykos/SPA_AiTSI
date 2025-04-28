@@ -1,117 +1,135 @@
 //using aitsi.Parser;
+//using ParserTNode = aitsi.Parser.TNode;
+
 
 //namespace aitsi
 //{
-//    static class QueryEvaluator
+//    static class Evaluator
 //    {
-//        private static AST ast;
+//        //public static string Evaluate(QueryNode tree, PKB pkb)
+//        //{
+//        //    SelectNode select = (SelectNode)tree.getChildByType("Select");
+//        //    string selectedVariable = select.variables[0];
 
-//        public static void SetAST(AST astTree)
+//        //    List<string> results = GetAllPossibleValues(selectedVariable, tree, pkb);
+
+//        //    foreach (var clause in select.children.OfType<ClauseNode>())
+//        //    {
+//        //        results = ApplyClause(results, clause, pkb);
+//        //    }
+
+//        //    foreach (var with in select.children.OfType<WithNode>())
+//        //    {
+//        //        results = ApplyWith(results, with, pkb);
+//        //    }
+
+//        //    if (selectedVariable.ToLower() == "boolean")
+//        //        return results.Any() ? "true" : "false";
+
+//        //    return string.Join(", ", results);
+//        //}
+
+//        public static string Evaluate(QueryNode tree, PKB pkb)
 //        {
-//            ast = astTree;
-//        }
+//            var select = (SelectNode)tree.getChildByType("Select");
+//            var declarations = tree.children.OfType<DeclarationNode>().ToList();
 
-//        public static bool EvaluateFollows(int stmt1, int stmt2)
-//        {
-//            if (ast == null) throw new Exception("AST nie zosta³ ustawiony.");
-//            aitsi.Parser.TNode root = ast.getRoot();
-//            return FindFollows(root, stmt1, stmt2);
-//        }
+//            var clauses = select.children.OfType<ClauseNode>().ToList();
+//            var withs = select.children.OfType<WithNode>().ToList();
 
-//        public static bool EvaluateParent(int stmt1, int stmt2)
-//        {
-//            if (ast == null) throw new Exception("AST nie zosta³ ustawiony.");
-//            aitsi.Parser.TNode root = ast.getRoot();
-//            return FindParent(root, stmt1, stmt2);
-//        }
+//            string selectedVariable = select.variables[0];
+//            List<string> resultSet = GetValuesForSelect(selectedVariable, declarations, pkb);
 
-//        private static bool FindFollows(aitsi.Parser.TNode node, int stmt1, int stmt2)
-//        {
-//            if (node == null) return false;
-
-//            if (node.getAttr() == stmt1.ToString())
+//            foreach (var clause in clauses)
 //            {
-//                var follows = node.getFollows();
-//                if (follows != null && follows.getAttr() == stmt2.ToString())
-//                    return true;
+//                resultSet = resultSet
+//                    .Where(res => ClauseSatisfied(clause, res, selectedVariable, pkb))
+//                    .ToList();
 //            }
 
-//            foreach (var child in node.getChildren())
+//            foreach (var with in withs)
 //            {
-//                if (FindFollows(child, stmt1, stmt2))
-//                    return true;
+//                resultSet = resultSet
+//                    .Where(res => WithSatisfied(with, res))
+//                    .ToList();
 //            }
 
-//            return false;
+//            if (selectedVariable.ToLower() == "boolean")
+//                return resultSet.Any() ? "true" : "false";
+
+//            return string.Join(", ", resultSet.Distinct());
 //        }
 
-//        private static bool FindParent(aitsi.Parser.TNode node, int stmt1, int stmt2)
-//        {
-//            if (node == null) return false;
 
-//            if (node.getAttr() == stmt1.ToString())
+//        private static List<string> GetValuesForSelect(string var, List<DeclarationNode> declarations, PKB pkb)
+//        {
+//            foreach (var decl in declarations)
 //            {
-//                foreach (var child in node.getChildren())
+//                if (decl.variables.Contains(var))
 //                {
-//                    if (child.getAttr() == stmt2.ToString())
-//                        return true;
+//                    switch (decl.type)
+//                    {
+//                        case "stmt": return pkb.GetStatements().Select(x => x.ToString()).ToList();
+//                        case "assign": return pkb.GetAssignStmts().Select(x => x.ToString()).ToList();
+//                        case "while": return pkb.GetWhileStmts().Select(x => x.ToString()).ToList();
+//                        case "if": return pkb.GetIfStmts().Select(x => x.ToString()).ToList();
+//                        case "variable": return pkb.GetVariables();
+//                        case "constant": return pkb.GetConstants();
+//                        case "procedure": return pkb.GetProcedures();
+//                    }
 //                }
 //            }
 
-//            foreach (var child in node.getChildren())
-//            {
-//                if (FindParent(child, stmt1, stmt2))
-//                    return true;
-//            }
+//            return new List<string>();
+//        }
 
-//            return false;
+//        private static bool ClauseSatisfied(ClauseNode clause, string currentVal, string selectedVariable, PKB pkb)
+//        {
+//            string left = clause.variables[0];
+//            string right = clause.variables[1];
+//            string rel = clause.relation.ToLower();
+
+//            string actualLeft = left == selectedVariable ? currentVal : left;
+//            string actualRight = right == selectedVariable ? currentVal : right;
+
+//            bool IsStmt(string s) => int.TryParse(s, out _);
+
+//            switch (rel)
+//            {
+//                case "modifies":
+//                    if (IsStmt(actualLeft)) return pkb.StmtModifies(int.Parse(actualLeft), actualRight);
+//                    else return pkb.ProcModifies(actualLeft, actualRight);
+
+//                case "uses":
+//                    if (IsStmt(actualLeft)) return pkb.StmtUses(int.Parse(actualLeft), actualRight);
+//                    else return pkb.ProcUses(actualLeft, actualRight);
+
+//                case "parent":
+//                    return IsStmt(actualLeft) && IsStmt(actualRight) && pkb.Parent(int.Parse(actualLeft), int.Parse(actualRight));
+
+//                case "parent*":
+//                    return IsStmt(actualLeft) && IsStmt(actualRight) && pkb.ParentStar(int.Parse(actualLeft), int.Parse(actualRight));
+
+//                case "follows":
+//                    return IsStmt(actualLeft) && IsStmt(actualRight) && pkb.Follows(int.Parse(actualLeft), int.Parse(actualRight));
+
+//                case "follows*":
+//                    return IsStmt(actualLeft) && IsStmt(actualRight) && pkb.FollowsStar(int.Parse(actualLeft), int.Parse(actualRight));
+
+//                case "calls":
+//                    return pkb.Calls(actualLeft, actualRight);
+
+//                case "calls*":
+//                    return pkb.CallsStar(actualLeft, actualRight);
+
+//                default:
+//                    return false;
+//            }
+//        }
+
+//        private static bool WithSatisfied(WithNode with, string currentVal)
+//        {
+//            return with.variables.Contains(currentVal);
 //        }
 //    }
 //}
-
-namespace aitsi
-{
-    static class Evaluator
-    {
-        public static string Evaluate(QueryNode tree, PKB pkb)
-        {
-            SelectNode select = (SelectNode)tree.getChildByType("Select");
-            string selectedVariable = select.variables[0];
-
-            List<string> results = GetAllPossibleValues(selectedVariable, tree, pkb);
-
-            foreach (var clause in select.children.OfType<ClauseNode>())
-            {
-                results = ApplyClause(results, clause, pkb);
-            }
-
-            foreach (var with in select.children.OfType<WithNode>())
-            {
-                results = ApplyWith(results, with, pkb);
-            }
-
-            if (selectedVariable.ToLower() == "boolean")
-                return results.Any() ? "true" : "false";
-
-            return string.Join(", ", results);
-        }
-
-        private static List<string> GetAllPossibleValues(string variable, QueryNode tree, PKB pkb)
-        {
-            //wszystkie mozliwe wartosci dla zmiennej
-            return pkb.GetEntitiesForSynonym(variable, tree);
-        }
-
-        private static List<string> ApplyClause(List<string> currentResults, ClauseNode clause, PKB pkb)
-        {
-            // TODO: przefiltruj currentResults na podstawie relacji w PKB
-            return pkb.FilterByClause(currentResults, clause);
-        }
-
-        private static List<string> ApplyWith(List<string> currentResults, WithNode with, PKB pkb)
-        {
-            // TODO: przefiltruj currentResults na podstawie porównania z with
-            return pkb.FilterByWith(currentResults, with);
-        }
-    }
-}

@@ -5,7 +5,7 @@ namespace aitsi
     static class QueryPreProcessor
     {
         public static string[] allowedRelRefs = ["modifies", "uses", "parent", "parent*", "follows", "follows*", "calls", "calls*"];
-        public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
+        public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line", "procedure", "call"];
 
         public static string evaluateAssignments(string assignments)
         {

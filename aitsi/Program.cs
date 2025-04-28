@@ -8,7 +8,10 @@ class Program {
         {
             Console.WriteLine("Proszę podać zapytanie: ");
             string query = Console.ReadLine();
+
             var queryParts = Regex.Split(query, @"(?=select)", RegexOptions.IgnoreCase);
+
+            Console.WriteLine(queryParts[0]);
             if (queryParts.Length < 2)
                 throw new Exception("Brak słowa 'select' w zapytaniu.");
 
