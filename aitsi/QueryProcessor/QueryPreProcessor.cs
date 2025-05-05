@@ -157,7 +157,7 @@ namespace aitsi
                             else if (remainingPart.StartsWith("with", StringComparison.OrdinalIgnoreCase))
                             {
                                 remainingPart = remainingPart.Substring(4).Trim();
-                                var withMatch = Regex.Match(remainingPart, @"(\w+\.\w+)\s*=\s*(\w+|""[^""]+"")", RegexOptions.IgnoreCase);
+                                var withMatch = Regex.Match(remainingPart, @"([\w]+\.[\w#]+)\s*=\s*(\w+|""[^""]+""|\d+)", RegexOptions.IgnoreCase);
                                 if (withMatch.Success)
                                 {
                                     var lefta = withMatch.Groups[1].Value.Trim();
