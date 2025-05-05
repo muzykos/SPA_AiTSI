@@ -5,7 +5,7 @@ namespace aitsi
     static class QueryPreProcessor
     {
         public static string[] allowedRelRefs = ["modifies", "uses", "parent", "parent*", "follows", "follows*", "calls", "calls*"];
-        public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line"];
+        public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line", "procedure", "call"];
 
         public static string evaluateAssignments(string assignments)
         {
@@ -52,38 +52,28 @@ namespace aitsi
 
             for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
 
-            //foreach (var item in queryParts) Console.WriteLine(item);
+            //int j = 0;
+            //foreach (var item in queryParts) Console.WriteLine(j++ + " " + item);
 
             validateIfStartsWithSelect(queryParts[0]);
-            string previous = "";
 
-            for (int i = 2; i < queryParts.Length; i++)
+            for (int i = 2; i < queryParts.Length;)
             {
                 switch (queryParts[i].Trim().ToLower())
                 {
                     case "such":
                         if (queryParts[++i].Trim().ToLower() != "that") throw new Exception("Po 'such' nie wystąpiło 'that'.");
-                        i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
-                        previous = "such that";
+                        do
+                        {
+                            i += validateSuchThat(queryParts.Skip(i + 1).Take(6).ToArray()) + 1;
+                        }while (++i < queryParts.Length && queryParts[i]== "and");
                         break;
                     case "with":
-                        validateWith(queryParts.Skip(i + 1).ToArray());
-                        i += 5;
-                        previous = "with";
-                        break;
-                    case "and":
-                        switch (previous)
+                        do
                         {
-                            case "": throw new Exception("Podano wartość 'and' przed klauzulami 'such that' bądź 'with'.");
-                            case "such that":
-                                i += validateSuchThat(queryParts.Skip(i + 1).ToArray()) + 1;
-                                break;
-                            case "with":
-                                validateWith(queryParts.Skip(i + 1).ToArray());
-                                i += 5;
-                                break;
-                            default: throw new Exception("Wystąpił nieznany błąd. Funkcja: evaluateQuery");
-                        }
+                            validateWith(queryParts.Skip(i + 1).Take(3).ToArray());
+                            i += 3;
+                        } while (++i < queryParts.Length && queryParts[i] == "and");
                         break;
                     default:
                         throw new Exception("Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i]);
@@ -103,23 +93,16 @@ namespace aitsi
         {
             if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiednią wartość po 'such that': " + suchThat[0]);
             if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierającego po relacji.");
-
-            for (int i = 2; i < suchThat.Length; i++)
-            {
-                if (suchThat[i].Trim() == ")")
-                {
-                    if (i == 2) throw new Exception("Nie podano wartości do sprawdzenia w referencji.");
-                    else return i;
-                }
-            }
-            throw new Exception("Nie zamknięto nawiasu po referencji.");
+            if (suchThat[3].Trim() != ",") throw new Exception("Argumenty w such that nie są oddzielone przecinkiem.");
+            if (suchThat[5].Trim() == ")") return 5;                
+            throw new Exception("Niepoprawny szyk. Nie zamknięto nawiasu po referencji, bądź podano złą liczbę argumentów.");
         }
 
         private static bool validateWith(string[] with)
         {
-            var leftSide = with[0].Split('.');
-            if (leftSide.Length != 2) throw new Exception("Lewa strona równania w 'with' nie posiada znaku '.'.");
-            if (with[1].Trim() != "=") throw new Exception("Niepoprawna składnia 'with'. Zabrakło znaku '='.");
+            if (with.Length == 0) throw new Exception("Niepoprawna skłądnie, nie podano nic po 'with'.");
+            if (with[1] != "=") throw new Exception("Zabrakło znaku '='.");
+            if (with.Length != 3) throw new Exception("Niepoprawna składnia 'with'. Podano zbyt dużo argumentów.");
             return true;
         }
 
