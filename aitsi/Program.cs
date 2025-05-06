@@ -16,7 +16,14 @@ class Program
         {
             parser.parseProgram();
             Console.WriteLine("Parsing completed successfully!\n");
-            AST.PrintAST(ast.getRoot(), 0);
+            var path = Path.Combine(AppContext.BaseDirectory, "ast_output.txt");
+            using (var writer = new StreamWriter(path))
+            {
+                AST.PrintAST(ast.getRoot(), 0, writer);
+            }
+
+            Console.WriteLine("Current directory: " + Directory.GetCurrentDirectory());
+            Console.WriteLine("AST has been written to ast_output.txt");
         }
         catch (Exception ex)
         {

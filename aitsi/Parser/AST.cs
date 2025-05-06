@@ -82,20 +82,21 @@ namespace aitsi.Parser
             return child.getParent();
         }
 
-        public static void PrintAST(TNode node, int indent)
+        public static void PrintAST(TNode node, int indent, TextWriter writer)
         {
-            Console.WriteLine(new string(' ', indent * 2) + $"{node.getType()} ({node.getAttr()})");
+            writer.WriteLine(new string(' ', indent * 2) + $"{node.getType()} ({node.getAttr()})");
 
             foreach (var child in node.getChildren())
             {
-                PrintAST(child, indent + 1);
+                PrintAST(child, indent + 1, writer);
             }
 
             var follows = node.getFollows();
             if (follows != null)
             {
-                Console.WriteLine(new string(' ', indent * 2) + $"FOLLOWS -> {follows.getType()} ({follows.getAttr()})");
+                writer.WriteLine(new string(' ', indent * 2) + $"FOLLOWS -> {follows.getType()} ({follows.getAttr()})");
             }
         }
+
     }
 }
