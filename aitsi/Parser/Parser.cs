@@ -16,6 +16,7 @@ namespace aitsi.Parser
 
         private void parse(TType type)
         {
+            Console.WriteLine($"Token: {currentNode.getType()} '{currentNode.getAttr()}'");
             if (currentNode.getType() == type)
                 currentNode = lexer.getNextNode();
             else
@@ -42,10 +43,24 @@ namespace aitsi.Parser
                 ast.setFollows(stmtNodes[i], stmtNodes[i + 1]);
         }
 
+        private TNode ParseCall()
+        {
+            parse(TType.Call);
+            string procName = currentNode.getAttr();
+            parse(TType.Name);
+            parse(TType.SemiColon);
+
+            var callNode = ast.createTNode(TType.Call, procName, stmtNumber++);
+            return callNode;
+        }
+
+
         private List<TNode> parseStatementList()
         {
             var stmts = new List<TNode>();
-            while (currentNode.getType() == TType.Name || currentNode.getType() == TType.While)
+            while (currentNode.getType() == TType.Name ||
+                   currentNode.getType() == TType.While ||
+                   currentNode.getType() == TType.Call)
             {
                 var stmt = parseStatement();
                 stmts.Add(stmt);
@@ -53,10 +68,22 @@ namespace aitsi.Parser
             return stmts;
         }
 
+
         private TNode parseStatement()
         {
-            return currentNode.getType() == TType.While ? parseWhile() : parseAssign();
+            switch (currentNode.getType())
+            {
+                case TType.Name:
+                    return parseAssign();
+                case TType.While:
+                    return parseWhile();
+                case TType.Call:
+                    return ParseCall();
+                default:
+                    throw new Exception($"Unexpected token {currentNode.getType()}");
+            }
         }
+
 
         private TNode parseAssign()
         {

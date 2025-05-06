@@ -5,12 +5,9 @@ class Program {
     static void Main(String[] args)
     {
         string source = @"
-        procedure main {
-            x = 5 + 3;
-            y = x + 1;
-            while y {
-                x = x + 1;
-            }
+        procedure Test {
+        x = 5;
+        call Init;
         }";
 
         var lexer = new Lexer(source);

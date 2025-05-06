@@ -65,6 +65,7 @@ namespace aitsi.Parser
                 var name = this.name();
                 if (name == "procedure") return new TNode(TType.Procedure, name);
                 if (name == "while") return new TNode(TType.While, name);
+                if (name == "call") return new TNode(TType.Call,name);
                 return new TNode(TType.Name, name);
             }
 
