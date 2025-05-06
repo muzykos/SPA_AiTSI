@@ -1,14 +1,12 @@
 ﻿using aitsi;
 using aitsi.Parser;
 
-class Program { 
+class Program
+{
     static void Main(String[] args)
     {
-        string source = @"
-        procedure Test {
-        x = 5;
-        call Init;
-        }";
+        string filePath = "/home/muzykos-laptop/Projects/SPA_AiTSI/aitsi/program.txt"; // Ensure this file exists in the working directory
+        string source = File.ReadAllText(filePath);
 
         var lexer = new Lexer(source);
         var ast = new AST();
@@ -16,7 +14,7 @@ class Program {
 
         try
         {
-            parser.parseProcedure();
+            parser.parseProgram();
             Console.WriteLine("Parsing completed successfully!\n");
             AST.PrintAST(ast.getRoot(), 0);
         }
