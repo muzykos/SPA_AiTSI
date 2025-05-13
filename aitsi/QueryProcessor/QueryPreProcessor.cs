@@ -66,7 +66,7 @@ namespace aitsi
                         do
                         {
                             i += validateSuchThat(queryParts.Skip(i + 1).Take(6).ToArray()) + 1;
-                        }while (++i < queryParts.Length && queryParts[i]== "and");
+                        } while (++i < queryParts.Length && queryParts[i] == "and");
                         break;
                     case "with":
                         do
@@ -94,7 +94,7 @@ namespace aitsi
             if (!allowedRelRefs.Contains(suchThat[0].Trim().ToLower())) throw new Exception("Podano nieodpowiednią wartość po 'such that': " + suchThat[0]);
             if (suchThat[1].Trim() != "(") throw new Exception("Nie podano nawiasu otwierającego po relacji.");
             if (suchThat[3].Trim() != ",") throw new Exception("Argumenty w such that nie są oddzielone przecinkiem.");
-            if (suchThat[5].Trim() == ")") return 5;                
+            if (suchThat[5].Trim() == ")") return 5;
             throw new Exception("Niepoprawny szyk. Nie zamknięto nawiasu po referencji, bądź podano złą liczbę argumentów.");
         }
 
@@ -157,16 +157,28 @@ namespace aitsi
                             else if (remainingPart.StartsWith("with", StringComparison.OrdinalIgnoreCase))
                             {
                                 remainingPart = remainingPart.Substring(4).Trim();
-                                var withMatch = Regex.Match(remainingPart, @"([\w]+\.[\w#]+)\s*=\s*(\w+|""[^""]+""|\d+)", RegexOptions.IgnoreCase);
-                                if (withMatch.Success)
+
+                                do
                                 {
-                                    var lefta = withMatch.Groups[1].Value.Trim();
-                                    var righta = withMatch.Groups[2].Value.Trim();
-                                    var withNode = new WithNode(lefta, righta);
-                                    selectNode.addChild(withNode);
-                                    int Index = withMatch.Index + withMatch.Length;
-                                    remainingPart = remainingPart.Substring(Index).Trim();
-                                }
+                                    var withMatch = Regex.Match(remainingPart, @"([\w]+\.[\w#]+)\s*=\s*(\w+|""[^""]+""|\d+)", RegexOptions.IgnoreCase);
+                                    if (withMatch.Success)
+                                    {
+                                        var lefta = withMatch.Groups[1].Value.Trim();
+                                        var righta = withMatch.Groups[2].Value.Trim();
+                                        var withNode = new WithNode(lefta, righta);
+                                        selectNode.addChild(withNode);
+                                        remainingPart = remainingPart.Substring(withMatch.Length).Trim();
+                                    }
+                                    if (remainingPart.StartsWith("and", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        remainingPart = remainingPart.Substring(3).Trim();
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+
+                                } while (!string.IsNullOrWhiteSpace(remainingPart));
                             }
                             else if (remainingPart.StartsWith("and", StringComparison.OrdinalIgnoreCase))
                             {
