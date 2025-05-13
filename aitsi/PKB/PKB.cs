@@ -1,298 +1,676 @@
 using aitsi.Parser;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace aitsi.Parser
+namespace aitsi.PKB
 {
-    class PKB
+     class PKB
     {
-        public static string[][] parentTable;
-        public static string[][] followsTable;
-        public static string[][] modifiesTable;
-        public static string[][] usesTable;
-        public static string[][] callsTable;
-        public static string[][] varTable;
-        public static Proc[] procTable;
-        public static TNode programTree;
+        private AST ast;
 
+        private HashSet<string> procedures = new();
+        private HashSet<string> variables = new();
+        private HashSet<string> constants = new();
 
-        private AST ast;  
+        private Dictionary<int, TNode> statements = new();
+        private Dictionary<string, List<int>> assignStmts = new();
+        private Dictionary<string, List<int>> whileStmts = new();
+        private Dictionary<string, List<int>> ifStmts = new();
+        private Dictionary<string, List<int>> callStmts = new();
 
-        private Dictionary<int, TNode> statementTable;  
-        private Dictionary<string, List<TNode>> variableTable; 
-        private Dictionary<string, List<TNode>> constantTable;
-        private Dictionary<string, TNode> procedureTable; 
+        private Dictionary<string, List<string>> modifies = new(); 
+        private Dictionary<int, List<string>> modifiesStmt = new();
+        private Dictionary<string, List<string>> uses = new(); 
+        private Dictionary<int, List<string>> usesStmt = new();
+        private Dictionary<int, int> follows = new(); 
+        private Dictionary<int, HashSet<int>> followsStar = new();
+        private Dictionary<int, int> parent = new(); 
+        private Dictionary<int, HashSet<int>> parentStar = new();
+        private Dictionary<string, List<string>> calls = new(); 
+        private Dictionary<string, HashSet<string>> callsStar = new();
+        private int stmtCounter = 1;
 
-        private Dictionary<TNode, HashSet<TNode>> modifiesMap;  
-        private Dictionary<TNode, HashSet<TNode>> usesMap; 
-        private Dictionary<TNode, HashSet<TNode>> parentStarMap;  
-        private Dictionary<TNode, HashSet<TNode>> followsStarMap; 
+        private Dictionary<string, List<int>> procToStmts = new();
 
         public PKB(AST ast)
         {
             this.ast = ast;
-
-            statementTable = new Dictionary<int, TNode>();
-            variableTable = new Dictionary<string, List<TNode>>();
-            constantTable = new Dictionary<string, List<TNode>>();
-            procedureTable = new Dictionary<string, TNode>();
-
-            modifiesMap = new Dictionary<TNode, HashSet<TNode>>();
-            usesMap = new Dictionary<TNode, HashSet<TNode>>();
-            parentStarMap = new Dictionary<TNode, HashSet<TNode>>();
-            followsStarMap = new Dictionary<TNode, HashSet<TNode>>();
-
         }
 
-        public void printPKB()
+        public void printInfo()
         {
-            Console.WriteLine("statements "+statementTable.Count);
-            Console.WriteLine("variables "+variableTable.Count);
-            Console.WriteLine("constants " + constantTable.Count);
-            Console.WriteLine("procedures " + procedureTable.Count);
-            Console.WriteLine("modifies " +  modifiesMap.Count);
-            Console.WriteLine("uses " + usesMap.Count);
-            Console.WriteLine("parent " + parentStarMap.Count);
-            Console.WriteLine("follows " + followsStarMap.Count);
-        }
+            Console.WriteLine("procedures "+ procedures.Count);
+            Console.WriteLine("variables " + variables.Count);
+            Console.WriteLine("constants " + constants.Count);
+            Console.WriteLine("assignStmts " + assignStmts.Count);
+            Console.WriteLine("whileStmts " + whileStmts.Count);
+            Console.WriteLine("ifStmts " + ifStmts.Count);
+            Console.WriteLine("callStmts " + callStmts.Count);
+            Console.WriteLine("modifies " + modifies.Count);
+            Console.WriteLine("modifiesStmt " + modifiesStmt.Count);
+            Console.WriteLine("uses " + uses.Count);
+            Console.WriteLine("usesStmt " + usesStmt.Count);
+            Console.WriteLine("follows " + follows.Count);
+            Console.WriteLine("usesStmt " + usesStmt.Count);
+            Console.WriteLine("followsStar " + followsStar.Count);
+            Console.WriteLine("parent " + parent.Count);
+            Console.WriteLine("parentStar " + parentStar.Count);
+            Console.WriteLine("calls " + calls.Count);
+            Console.WriteLine("callsStar " + callsStar.Count);
 
-        public void PopulatePKB()
+        }
+        public void ExtractInformation()
         {
             TNode root = ast.getRoot();
-            if (root != null && ast.getType(root) == TType.Procedure)
+            if (root == null || root.getType() != TType.Program)
             {
-                string procName = ast.getAttr(root);
-                procedureTable[procName] = root;
+                throw new Exception("Invalid AST: Root node is not a Program");
+            }
 
-                ProcessStatements(root, ast.getChildren(root));
+            foreach (TNode procNode in root.getChildren())
+            {
+                if (procNode.getType() != TType.Procedure)
+                    continue;
+
+                string procName = procNode.getAttr();
+                procedures.Add(procName);
+                procToStmts[procName] = new List<int>();
+
+                if (!modifies.ContainsKey(procName))
+                    modifies[procName] = new List<string>();
+
+                if (!uses.ContainsKey(procName))
+                    uses[procName] = new List<string>();
+
+                if (!calls.ContainsKey(procName))
+                    calls[procName] = new List<string>();
+
+                
+                ProcessStatements(procNode, procName);
+            }
+
+            
+            BuildFollowsStar();
+            BuildParentStar();
+            BuildCallsStar();
+        }
+
+        
+        private void ProcessStatements(TNode procNode, string procName)
+        {
+            foreach (TNode stmtNode in procNode.getChildren())
+            {
+                ProcessStatement(stmtNode, procName, -1); 
             }
         }
 
-        private void ProcessStatements(TNode parent, List<TNode> statements)
+        
+        private void ProcessStatement(TNode stmtNode, string procName, int parentStmt)
         {
-            foreach (var stmt in statements)
+            if (stmtNode.getType() == TType.Else)
             {
-                int stmtNum = GetStatementNumber(stmt);
-                //if (stmtNum > 0)
-                //{
-                    statementTable[stmtNum] = stmt;
-                //}
-
-                switch (ast.getType(stmt))
+        
+                foreach (TNode childStmt in stmtNode.getChildren())
                 {
-                    case TType.Assign:
-                        ProcessAssign(parent, stmt);
-                        break;
-                    case TType.While:
-                        ProcessWhile(parent, stmt);
-                        break;
+                    ProcessStatement(childStmt, procName, parentStmt);
                 }
+                return;
             }
 
-            ComputeTransitiveClosure();
-        }
 
-        private void ProcessAssign(TNode parent, TNode assignNode)
-        {
-            string varName = ast.getAttr(assignNode);
+            //int number = 1;
+          //  int stmtNum = number++;
+            int stmtNum = stmtCounter++;
 
-            AddToModifies(assignNode, varName);
-            AddToModifies(parent, varName); 
+            statements[stmtNum] = stmtNode;
+            procToStmts[procName].Add(stmtNum);
 
-            List<TNode> children = ast.getChildren(assignNode);
-            if (children.Count > 0)
+            if (parentStmt != -1)
             {
-                ProcessExpression(assignNode, parent, children[0]);
+                parent[stmtNum] = parentStmt;
             }
-        }
 
-        private void ProcessWhile(TNode parent, TNode whileNode)
-        {
-            string varName = ast.getAttr(whileNode);
-
-            AddToUses(whileNode, varName);
-            AddToUses(parent, varName);
-
-            ProcessStatements(whileNode, ast.getChildren(whileNode));
-        }
-
-        private void ProcessExpression(TNode stmt, TNode parent, TNode expr)
-        {
-            if (expr == null) return;
-
-            switch (ast.getType(expr))
+            TNode? followsNode = stmtNode.getFollows();
+            if (followsNode != null && int.TryParse(followsNode.getAttr(), out int followsStmt))
             {
-                case TType.Variable:
-                    string varName = ast.getAttr(expr);
-                    AddToUses(stmt, varName);
-                    AddToUses(parent, varName);
+                follows[stmtNum] = followsStmt;
+            }
 
-                    if (!variableTable.ContainsKey(varName))
-                    {
-                        variableTable[varName] = new List<TNode>();
-                    }
-                    variableTable[varName].Add(expr);
+            switch (stmtNode.getType())
+            {
+                case TType.Assign:
+                    ProcessAssignStmt(stmtNode, stmtNum, procName);
                     break;
 
-                case TType.Constant:
-                    string constValue = ast.getAttr(expr);
-
-                    if (!constantTable.ContainsKey(constValue))
-                    {
-                        constantTable[constValue] = new List<TNode>();
-                    }
-                    constantTable[constValue].Add(expr);
+                case TType.While:
+                    ProcessWhileStmt(stmtNode, stmtNum, procName);
                     break;
 
-                case TType.Plus:
-                    List<TNode> children = ast.getChildren(expr);
-                    if (children.Count >= 2)
-                    {
-                        ProcessExpression(stmt, parent, children[0]); 
-                        ProcessExpression(stmt, parent, children[1]); 
-                    }
+                case TType.If:
+                    ProcessIfStmt(stmtNode, stmtNum, procName);
+                    break;
+
+                case TType.Call:
+                    ProcessCallStmt(stmtNode, stmtNum, procName);
                     break;
             }
         }
 
-        private int GetStatementNumber(TNode node)
+        private void ProcessAssignStmt(TNode stmtNode, int stmtNum, string procName)
         {
-            if (node == null) return -1;
+            string varName = stmtNode.getAttr();
+            variables.Add(varName);
 
-            //TType type = ast.getType(node);
-            //if (type == TType.Assign || type == TType.While)
+            if (!assignStmts.ContainsKey(varName))
+                assignStmts[varName] = new List<int>();
+            assignStmts[varName].Add(stmtNum);
+
+            if (!modifiesStmt.ContainsKey(stmtNum))
+                modifiesStmt[stmtNum] = new List<string>();
+            modifiesStmt[stmtNum].Add(varName);
+
+            if (!modifies[procName].Contains(varName))
+                modifies[procName].Add(varName);
+
+            foreach (TNode exprNode in stmtNode.getChildren())
             {
-                // Extract statement number based on your implementation
-                //return int.Parse(node.getAttr().Split(':')[0]);
+                ExtractUsedVariables(exprNode, stmtNum, procName);
             }
-
-            return 1;
         }
 
-        private void AddToModifies(TNode node, string varName)
+        private void ProcessWhileStmt(TNode stmtNode, int stmtNum, string procName)
         {
-            if (!modifiesMap.ContainsKey(node))
-            {
-                modifiesMap[node] = new HashSet<TNode>();
-            }
+            string varName = stmtNode.getAttr();
+            variables.Add(varName);
 
-            TNode varNode = GetOrCreateVariableNode(varName);
-            modifiesMap[node].Add(varNode);
+            if (!whileStmts.ContainsKey(varName))
+                whileStmts[varName] = new List<int>();
+            whileStmts[varName].Add(stmtNum);
+
+            if (!usesStmt.ContainsKey(stmtNum))
+                usesStmt[stmtNum] = new List<string>();
+            usesStmt[stmtNum].Add(varName);
+
+            if (!uses[procName].Contains(varName))
+                uses[procName].Add(varName);
+
+            foreach (TNode childStmt in stmtNode.getChildren())
+            {
+                ProcessStatement(childStmt, procName, stmtNum);
+            }
         }
 
-        private void AddToUses(TNode node, string varName)
+        private void ProcessIfStmt(TNode stmtNode, int stmtNum, string procName)
         {
-            if (!usesMap.ContainsKey(node))
+            string varName = stmtNode.getAttr();
+            variables.Add(varName);
+
+            if (!ifStmts.ContainsKey(varName))
+                ifStmts[varName] = new List<int>();
+            ifStmts[varName].Add(stmtNum);
+
+            if (!usesStmt.ContainsKey(stmtNum))
+                usesStmt[stmtNum] = new List<string>();
+            usesStmt[stmtNum].Add(varName);
+
+            if (!uses[procName].Contains(varName))
+                uses[procName].Add(varName);
+
+            foreach (TNode childNode in stmtNode.getChildren())
             {
-                usesMap[node] = new HashSet<TNode>();
-            }
-
-            TNode varNode = GetOrCreateVariableNode(varName);
-            usesMap[node].Add(varNode);
-        }
-
-        private TNode GetOrCreateVariableNode(string varName)
-        {
-            if (variableTable.ContainsKey(varName) && variableTable[varName].Count > 0)
-            {
-                return variableTable[varName][0];
-            }
-
-            TNode varNode = ast.createTNode(TType.Variable, varName, -1);
-
-            if (!variableTable.ContainsKey(varName))
-            {
-                variableTable[varName] = new List<TNode>();
-            }
-            variableTable[varName].Add(varNode);
-
-            return varNode;
-        }
-
-        private void ComputeTransitiveClosure()
-        {
-            // Parent* relationship
-            foreach (var entry in statementTable)
-            {
-                TNode stmt = entry.Value;
-                parentStarMap[stmt] = new HashSet<TNode>();
-
-                // Direct parent
-                TNode parent = ast.getParent(stmt);
-                if (parent != null && ast.getType(parent) != TType.Procedure)
+                if (childNode.getType() == TType.Else)
                 {
-                    parentStarMap[stmt].Add(parent);
-
-                    // Add all ancestors
-                    while ((parent = ast.getParent(parent)) != null && ast.getType(parent) != TType.Procedure)
+                    foreach (TNode elseStmt in childNode.getChildren())
                     {
-                        parentStarMap[stmt].Add(parent);
+                        ProcessStatement(elseStmt, procName, stmtNum);
+                    }
+                }
+                else
+                {
+                    ProcessStatement(childNode, procName, stmtNum);
+                }
+            }
+        }
+
+        private void ProcessCallStmt(TNode stmtNode, int stmtNum, string procName)
+        {
+            string calledProc = stmtNode.getAttr();
+
+            if (!callStmts.ContainsKey(calledProc))
+                callStmts[calledProc] = new List<int>();
+            callStmts[calledProc].Add(stmtNum);
+
+            if (!calls[procName].Contains(calledProc))
+                calls[procName].Add(calledProc);
+        }
+
+        private void ExtractUsedVariables(TNode exprNode, int stmtNum, string procName)
+        {
+            if (exprNode.getType() == TType.Variable)
+            {
+                string varName = exprNode.getAttr();
+                variables.Add(varName);
+
+                if (!usesStmt.ContainsKey(stmtNum))
+                    usesStmt[stmtNum] = new List<string>();
+                if (!usesStmt[stmtNum].Contains(varName))
+                    usesStmt[stmtNum].Add(varName);
+
+                if (!uses[procName].Contains(varName))
+                    uses[procName].Add(varName);
+            }
+            else if (exprNode.getType() == TType.Constant)
+            {
+                constants.Add(exprNode.getAttr());
+            }
+
+            foreach (TNode child in exprNode.getChildren())
+            {
+                ExtractUsedVariables(child, stmtNum, procName);
+            }
+        }
+
+        private void BuildFollowsStar()
+        {
+            foreach (var pair in follows)
+            {
+                int s1 = pair.Key;
+                int s2 = pair.Value;
+
+                if (!followsStar.ContainsKey(s1))
+                    followsStar[s1] = new HashSet<int>();
+
+                followsStar[s1].Add(s2);
+            }
+
+            bool changed;
+            do
+            {
+                changed = false;
+
+                foreach (var pair in followsStar.ToList())
+                {
+                    int s1 = pair.Key;
+                    HashSet<int> s1Follows = pair.Value;
+                    int initialCount = s1Follows.Count;
+
+                    foreach (int s2 in s1Follows.ToList())
+                    {
+                        if (followsStar.ContainsKey(s2))
+                        {
+                            foreach (int s3 in followsStar[s2])
+                            {
+                                s1Follows.Add(s3);
+                            }
+                        }
+                    }
+
+                    if (s1Follows.Count > initialCount)
+                        changed = true;
+                }
+            } while (changed);
+        }
+
+        private void BuildParentStar()
+        {
+            foreach (var pair in parent)
+            {
+                int child = pair.Key;
+                int p = pair.Value;
+
+                if (!parentStar.ContainsKey(p))
+                    parentStar[p] = new HashSet<int>();
+
+                parentStar[p].Add(child);
+            }
+
+            bool changed;
+            do
+            {
+                changed = false;
+
+                foreach (var pair in parentStar.ToList())
+                {
+                    int p1 = pair.Key;
+                    HashSet<int> children = pair.Value;
+
+                    foreach (int child in children.ToList())
+                    {
+                        if (parentStar.ContainsKey(child))
+                        {
+                            int initialCount = children.Count;
+
+                            foreach (int grandchild in parentStar[child])
+                            {
+                                children.Add(grandchild);
+                            }
+
+                            if (children.Count > initialCount)
+                                changed = true;
+                        }
+                    }
+                }
+            } while (changed);
+        }
+
+        private void BuildCallsStar()
+        {
+            foreach (var proc in procedures)
+            {
+                callsStar[proc] = new HashSet<string>();
+
+                if (calls.ContainsKey(proc))
+                {
+                    foreach (string calledProc in calls[proc])
+                    {
+                        callsStar[proc].Add(calledProc);
                     }
                 }
             }
 
-            // Follows* relationship
-            foreach (var entry in statementTable)
+            bool changed;
+            do
             {
-                TNode stmt = entry.Value;
-                followsStarMap[stmt] = new HashSet<TNode>();
+                changed = false;
 
-                // Direct follows
-                TNode follows = ast.getFollows(stmt);
-                if (follows != null)
+                foreach (var pair in callsStar.ToList())
                 {
-                    followsStarMap[stmt].Add(follows);
+                    string caller = pair.Key;
+                    HashSet<string> callees = pair.Value;
 
-                    // Add all statements that follow transitively
-                    while ((follows = ast.getFollows(follows)) != null)
+                    foreach (string callee in callees.ToList())
                     {
-                        followsStarMap[stmt].Add(follows);
+                        if (callsStar.ContainsKey(callee))
+                        {
+                            int initialCount = callees.Count;
+
+                            foreach (string transitiveCallee in callsStar[callee])
+                            {
+                                callees.Add(transitiveCallee);
+                            }
+
+                            if (callees.Count > initialCount)
+                                changed = true;
+                        }
                     }
                 }
+            } while (changed);
+        }
+
+        /* PKB Query Methods */
+
+        public List<string> GetProcedures()
+        {
+            return procedures.ToList();
+        }
+
+        public List<string> GetVariables()
+        {
+            return variables.ToList();
+        }
+
+        public List<string> GetConstants()
+        {
+            return constants.ToList();
+        }
+
+        public List<int> GetStatements()
+        {
+            return statements.Keys.ToList();
+        }
+        public List<int> GetAssignStmts(string variable = "")
+        {
+            if (string.IsNullOrEmpty(variable))
+                return assignStmts.Values.SelectMany(list => list).ToList();
+
+            return assignStmts.ContainsKey(variable) ? assignStmts[variable] : new List<int>();
+        }
+        public List<int> GetWhileStmts(string variable = "")
+        {
+            if (string.IsNullOrEmpty(variable))
+                return whileStmts.Values.SelectMany(list => list).ToList();
+
+            return whileStmts.ContainsKey(variable) ? whileStmts[variable] : new List<int>();
+        }
+        public List<int> GetIfStmts(string variable = "")
+        {
+            if (string.IsNullOrEmpty(variable))
+                return ifStmts.Values.SelectMany(list => list).ToList();
+
+            return ifStmts.ContainsKey(variable) ? ifStmts[variable] : new List<int>();
+        }
+
+        public List<int> GetCallStmts(string procedure = "")
+        {
+            if (string.IsNullOrEmpty(procedure))
+                return callStmts.Values.SelectMany(list => list).ToList();
+
+            return callStmts.ContainsKey(procedure) ? callStmts[procedure] : new List<int>();
+        }
+        public List<int> GetStmtsInProc(string procedure)
+        {
+            return procToStmts.ContainsKey(procedure) ? procToStmts[procedure] : new List<int>();
+        }
+        public List<string> GetModifiesProc(string procedure)
+        {
+            return modifies.ContainsKey(procedure) ? modifies[procedure] : new List<string>();
+        }
+
+        public List<string> GetProcModifies(string variable)
+        {
+            return modifies.Where(pair => pair.Value.Contains(variable))
+                         .Select(pair => pair.Key)
+                         .ToList();
+        }
+        public List<string> GetModifiesStmt(int stmtNum)
+        {
+            return modifiesStmt.ContainsKey(stmtNum) ? modifiesStmt[stmtNum] : new List<string>();
+        }
+
+        public List<int> GetStmtModifies(string variable)
+        {
+            return modifiesStmt.Where(pair => pair.Value.Contains(variable))
+                              .Select(pair => pair.Key)
+                              .ToList();
+        }
+
+        public List<string> GetUsesProc(string procedure)
+        {
+            return uses.ContainsKey(procedure) ? uses[procedure] : new List<string>();
+        }
+
+        public List<string> GetProcUses(string variable)
+        {
+            return uses.Where(pair => pair.Value.Contains(variable))
+                     .Select(pair => pair.Key)
+                     .ToList();
+        }
+
+        public List<string> GetUsesStmt(int stmtNum)
+        {
+            return usesStmt.ContainsKey(stmtNum) ? usesStmt[stmtNum] : new List<string>();
+        }
+        public List<int> GetStmtUses(string variable)
+        {
+            return usesStmt.Where(pair => pair.Value.Contains(variable))
+                          .Select(pair => pair.Key)
+                          .ToList();
+        }
+
+        public int GetFollows(int stmtNum)
+        {
+            return follows.ContainsKey(stmtNum) ? follows[stmtNum] : -1;
+        }
+
+        public int GetFollowedBy(int stmtNum)
+        {
+            return follows.FirstOrDefault(pair => pair.Value == stmtNum).Key;
+        }
+
+        public List<int> GetFollowsStar(int stmtNum)
+        {
+            return followsStar.ContainsKey(stmtNum) ? followsStar[stmtNum].ToList() : new List<int>();
+        }
+
+        public List<int> GetFollowedByStar(int stmtNum)
+        {
+            return followsStar.Where(pair => pair.Value.Contains(stmtNum))
+                             .Select(pair => pair.Key)
+                             .ToList();
+        }
+
+        public int GetParent(int stmtNum)
+        {
+            return parent.ContainsKey(stmtNum) ? parent[stmtNum] : -1;
+        }
+
+        public List<int> GetChildren(int stmtNum)
+        {
+            return parent.Where(pair => pair.Value == stmtNum)
+                        .Select(pair => pair.Key)
+                        .ToList();
+        }
+
+        public List<int> GetParentStar(int stmtNum)
+        {
+            List<int> ancestors = new();
+            int current = GetParent(stmtNum);
+
+            while (current != -1)
+            {
+                ancestors.Add(current);
+                current = GetParent(current);
             }
 
+            return ancestors;
+        }
+        public List<int> GetChildrenStar(int stmtNum)
+        {
+            return parentStar.ContainsKey(stmtNum) ? parentStar[stmtNum].ToList() : new List<int>();
+        }
+
+        public List<string> GetCalls(string procedure)
+        {
+            return calls.ContainsKey(procedure) ? calls[procedure] : new List<string>();
+        }
+
+        public List<string> GetCalledBy(string procedure)
+        {
+            return calls.Where(pair => pair.Value.Contains(procedure))
+                      .Select(pair => pair.Key)
+                      .ToList();
+        }
+
+        public List<string> GetCallsStar(string procedure)
+        {
+            return callsStar.ContainsKey(procedure) ? callsStar[procedure].ToList() : new List<string>();
+        }
+
+        public List<string> GetCalledByStar(string procedure)
+        {
+            return callsStar.Where(pair => pair.Value.Contains(procedure))
+                           .Select(pair => pair.Key)
+                           .ToList();
+        }
+
+        public bool ProcModifies(string procedure, string variable)
+        {
+            return modifies.ContainsKey(procedure) && modifies[procedure].Contains(variable);
+        }
+
+        public bool StmtModifies(int stmtNum, string variable)
+        {
+            return modifiesStmt.ContainsKey(stmtNum) && modifiesStmt[stmtNum].Contains(variable);
+        }
+
+        public bool ProcUses(string procedure, string variable)
+        {
+            return uses.ContainsKey(procedure) && uses[procedure].Contains(variable);
+        }
+
+        public bool StmtUses(int stmtNum, string variable)
+        {
+            return usesStmt.ContainsKey(stmtNum) && usesStmt[stmtNum].Contains(variable);
+        }
+        public bool Follows(int s1, int s2)
+        {
+            return follows.ContainsKey(s1) && follows[s1] == s2;
+        }
+
+        public bool FollowsStar(int s1, int s2)
+        {
+            return followsStar.ContainsKey(s1) && followsStar[s1].Contains(s2);
+        }
+
+        public bool Parent(int s1, int s2)
+        {
+            return parent.ContainsKey(s2) && parent[s2] == s1;
+        }
+
+        public bool ParentStar(int s1, int s2)
+        {
+            return GetParentStar(s2).Contains(s1);
+        }
+        public bool Calls(string p1, string p2)
+        {
+            return calls.ContainsKey(p1) && calls[p1].Contains(p2);
+        }
+
+        public bool CallsStar(string p1, string p2)
+        {
+            return callsStar.ContainsKey(p1) && callsStar[p1].Contains(p2);
+        }
+        public TNode? GetStatementNode(int stmtNum)
+        {
+            return statements.ContainsKey(stmtNum) ? statements[stmtNum] : null;
+        }
+
+        public TType? GetStatementType(int stmtNum)
+        {
+            return statements.ContainsKey(stmtNum) ? statements[stmtNum].getType() : null;
         }
         // GETTERY dla potrzebnych prywatnych map i tabel
 
-        public Dictionary<int, TNode> GetStatementTable()
-        {
-            return statementTable;
-        }
+        //public Dictionary<int, TNode> GetStatementTable()
+        //{
+        //    return statementTable;
+        //}
 
-        public Dictionary<string, List<TNode>> GetVariableTable()
-        {
-            return variableTable;
-        }
+        //public Dictionary<string, List<TNode>> GetVariableTable()
+        //{
+        //    return variableTable;
+        //}
 
-        public Dictionary<string, List<TNode>> GetConstantTable()
-        {
-            return constantTable;
-        }
+        //public Dictionary<string, List<TNode>> GetConstantTable()
+        //{
+        //    return constantTable;
+        //}
 
-        public Dictionary<string, TNode> GetProcedureTable()
-        {
-            return procedureTable;
-        }
+        //public Dictionary<string, TNode> GetProcedureTable()
+        //{
+        //    return procedureTable;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetModifiesMap()
-        {
-            return modifiesMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetModifiesMap()
+        //{
+        //    return modifiesMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetUsesMap()
-        {
-            return usesMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetUsesMap()
+        //{
+        //    return usesMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetParentStarMap()
-        {
-            return parentStarMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetParentStarMap()
+        //{
+        //    return parentStarMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetFollowsStarMap()
-        {
-            return followsStarMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetFollowsStarMap()
+        //{
+        //    return followsStarMap;
+        //}
 
     }
-
-
 }

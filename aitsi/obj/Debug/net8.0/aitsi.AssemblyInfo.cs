@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("aitsi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+046920f1f67f7f7b7ee6e4a0278c5519fe70455c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+459c7b4342812d175e053768c5fd57a95454573d")]
 [assembly: System.Reflection.AssemblyProductAttribute("aitsi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("aitsi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
