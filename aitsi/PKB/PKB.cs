@@ -628,5 +628,47 @@ namespace aitsi.PKB
         {
             return statements.ContainsKey(stmtNum) ? statements[stmtNum].getType() : null;
         }
+        // GETTERY dla potrzebnych prywatnych map i tabel
+
+        public Dictionary<int, TNode> GetStatementTable()
+        {
+            return statementTable;
+        }
+
+        public Dictionary<string, List<TNode>> GetVariableTable()
+        {
+            return variableTable;
+        }
+
+        public Dictionary<string, List<TNode>> GetConstantTable()
+        {
+            return constantTable;
+        }
+
+        public Dictionary<string, TNode> GetProcedureTable()
+        {
+            return procedureTable;
+        }
+
+        public Dictionary<TNode, HashSet<TNode>> GetModifiesMap()
+        {
+            return modifiesMap;
+        }
+
+        public Dictionary<TNode, HashSet<TNode>> GetUsesMap()
+        {
+            return usesMap;
+        }
+
+        public Dictionary<TNode, HashSet<TNode>> GetParentStarMap()
+        {
+            return parentStarMap;
+        }
+
+        public Dictionary<TNode, HashSet<TNode>> GetFollowsStarMap()
+        {
+            return followsStarMap;
+        }
+
     }
 }
