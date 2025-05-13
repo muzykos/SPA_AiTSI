@@ -43,8 +43,17 @@ namespace aitsi.QueryProcessor
             var parts = value.Split('.');
             if (parts.Length < 2) return null;
             if (!validateSynonym(tree, parts[0]))return null;
-            if (parts[1].EndsWith('#')) return "integer";
-            return "charstr";
+            switch (parts[1])
+            {
+                case "procName":
+                case "varName":
+                    return "charstr";
+                case "value":
+                case "stmt#":
+                    return "integer";
+                default:
+                    throw new Exception("Nazwa atrybutu w while jest niepoprawna. Błędna część: " + value);
+            }
         }
 
         private static void validateClauses(SelectNode tree)
@@ -52,22 +61,22 @@ namespace aitsi.QueryProcessor
             Node[] declarations = tree.getChildreenByName("Clause");
             foreach (Node declaration in declarations)
             {
-                switch (declaration.relation)
+                switch (declaration.relation.ToLower())
                 {
-                    case "Modifies":
-                    case "Uses":
+                    case "modifies":
+                    case "uses":
                         validateIfStmtRef(tree.parent, declaration.variables[0]);
                         validateIfEntRef(tree.parent, declaration.variables[1]);
                         break;
-                    case "Parent":
-                    case "Parent*":
-                    case "Follows":
-                    case "Follows*":
+                    case "parent":
+                    case "parent*":
+                    case "follows":
+                    case "follows*":
                         validateIfStmtRef(tree.parent, declaration.variables[0]);
                         validateIfStmtRef(tree.parent, declaration.variables[1]);                        
                         break;
-                    case "Calls":
-                    case "Calls*":
+                    case "calls":
+                    case "calls*":
                         validateIfEntRef(tree.parent, declaration.variables[0]);
                         validateIfEntRef(tree.parent, declaration.variables[1]);
                         break;
@@ -123,15 +132,10 @@ namespace aitsi.QueryProcessor
         private static bool validateIfEntRef(Node tree, string value)
         {
             if (value == "_") return true;
+            if(validateIfInteger(value))return true;
             if (validateSynonym(tree, value)) return true;
             if(value.StartsWith("\"") && value.EndsWith("\"") && validateIfIDENT(value.Substring(1, value.Length-2)))return true;
             throw new Exception("Podano nieprawidłową wartość jako entRef. Podana wartość: " + value);
-        }
-
-        private static bool validateIfName(string value)
-        {
-            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*$")) return false;
-            return true;
         }
 
         private static bool validateIfInteger(string value)

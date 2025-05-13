@@ -65,6 +65,10 @@ namespace aitsi.Parser
                 var name = this.name();
                 if (name == "procedure") return new TNode(TType.Procedure, name);
                 if (name == "while") return new TNode(TType.While, name);
+                if (name == "if") return new TNode(TType.If, name);
+                if (name == "then") return new TNode(TType.Then, name);
+                if (name == "else") return new TNode(TType.Else, name);
+                if (name == "call") return new TNode(TType.Call, name);
                 return new TNode(TType.Name, name);
             }
 
@@ -77,19 +81,34 @@ namespace aitsi.Parser
             {
                 case '=':
                     advance();
-                    return new TNode(TType.Assign,"=");
+                    return new TNode(TType.Assign, "=");
                 case '+':
                     advance();
-                    return new TNode(TType.Plus,"+");
+                    return new TNode(TType.Plus, "+");
+                case '-':
+                    advance();
+                    return new TNode(TType.Minus, "-");
+                case '*':
+                    advance();
+                    return new TNode(TType.Times, "*");
+                case '/':
+                    advance();
+                    return new TNode(TType.Divide, "/");
+                case '(':
+                    advance();
+                    return new TNode(TType.LParenthesis, "(");
+                case ')':
+                    advance();
+                    return new TNode(TType.RParenthesis, ")");
                 case '{':
                     advance();
-                    return new TNode(TType.LBrace,"{");
+                    return new TNode(TType.LBrace, "{");
                 case '}':
                     advance();
-                    return new TNode(TType.RBrace,"}");
+                    return new TNode(TType.RBrace, "}");
                 case ';':
                     advance();
-                    return new TNode(TType.SemiColon,";");
+                    return new TNode(TType.SemiColon, ";");
             }
 
             throw new Exception($"Unexpected character: {currentChar}");
