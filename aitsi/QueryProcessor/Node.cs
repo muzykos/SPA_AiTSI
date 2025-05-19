@@ -85,3 +85,15 @@ public class WithNode : Node
         this.variables.Add(right);
     }
 }
+
+public class PatternNode : Node
+{
+    public PatternNode(string assignVal, string left, string right, string matchType)
+    {
+        this.name = $"Pattern: {assignVal}({left}, {matchType}:{right})";
+        this.type = matchType;
+        this.variables.Add(assignVal);
+        this.variables.Add(left);
+        this.variables.Add(right);
+    }
+}

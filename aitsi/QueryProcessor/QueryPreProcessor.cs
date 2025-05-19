@@ -4,7 +4,7 @@ namespace aitsi
 {
     static class QueryPreProcessor
     {
-        public static string[] allowedRelRefs = ["modifies", "uses", "parent", "parent*", "follows", "follows*", "calls", "calls*"];
+        public static string[] allowedRelRefs = ["modifies", "uses", "parent", "parent*", "follows", "follows*", "calls", "calls*", "next", "next*"];
         public static string[] declarationTypes = ["stmt", "assign", "while", "if", "variable", "constant", "prog_line", "procedure", "call", "stmtLst"];
 
         public static string evaluateAssignments(string assignments)
@@ -79,7 +79,7 @@ namespace aitsi
                         do
                         {
                             string[] stopWords = { "and", "such", "while" };
-                            i += validatePattern(queryParts.Skip(i+1).TakeWhile(part => !stopWords.Contains(part, StringComparer.OrdinalIgnoreCase)).ToArray());
+                            i += validatePattern(queryParts.Skip(i + 1).TakeWhile(part => !stopWords.Contains(part, StringComparer.OrdinalIgnoreCase)).ToArray());
                         } while (++i < queryParts.Length && queryParts[i] == "and");
                         break;
                     default:
@@ -118,7 +118,7 @@ namespace aitsi
             if (pattern.Length < 6) throw new Exception("Niepoprawna składnia, nie podano nic po 'pattern'.");
             string oneString = String.Join("", pattern);
             //Console.WriteLine(oneString);
-            
+
             Regex checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+""|_)\s*,\s*_\s*\)");
             if (checkPattern.IsMatch(oneString)) return oneString.Length; //while
 
@@ -223,6 +223,43 @@ namespace aitsi
                                     int Index = clauseMatch.Index + clauseMatch.Length;
                                     remainingPart = remainingPart.Substring(Index).Trim();
                                 }
+                            }
+                            else if (remainingPart.StartsWith("Pattern", StringComparison.OrdinalIgnoreCase))
+                            {
+                                remainingPart = remainingPart.Substring(7).Trim();
+
+                                do
+                                {
+                                    var patternMatch = Regex.Match(remainingPart, @"(\w+)\s*\(\s*(\w+|_)\s*,\s*(?:(?:_""([^""]+)""_)|""([^""]+)""|_)\s*\)", RegexOptions.IgnoreCase);
+                                    if (patternMatch.Success)
+                                    {
+                                        var assignVar = patternMatch.Groups[1].Value.Trim();
+                                        var left = patternMatch.Groups[2].Value.Trim();
+                                        string right = "";
+                                        string matchType = "";
+                                        if (patternMatch.Groups[3].Success)
+                                        {
+                                            right = patternMatch.Groups[3].Value.Trim();
+                                            matchType = "subexpression";
+                                        }
+                                        else if (patternMatch.Groups[4].Success)
+                                        {
+                                            right = patternMatch.Groups[4].Value.Trim();
+                                            matchType = "exact";
+                                        }
+                                        var patternNode = new PatternNode(assignVar, left, right, matchType);
+                                        selectNode.addChild(patternNode);
+                                        remainingPart = remainingPart.Substring(patternMatch.Length).Trim();
+                                    }
+                                    if (remainingPart.StartsWith("and", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        remainingPart = remainingPart.Substring(3).Trim();
+                                    }
+                                    else
+                                    {
+                                        break;
+                                    }
+                                } while (!string.IsNullOrWhiteSpace(remainingPart));
                             }
                         }
                         selectNode.parent = query;
