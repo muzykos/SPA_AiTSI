@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace aitsi.Parser
 {
-    class AST : IAST
+    public class AST : IAST
     {
         private TNode root;
         //private HashSet<TNode> nodes = new();

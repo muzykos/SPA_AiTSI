@@ -16,7 +16,8 @@ class Program
         var lexer = new Lexer(source);
         var ast = new AST();
         var parser = new Parser(lexer, ast);
-        var pkb = new PKB(ast);
+        var designExtractor = new DesignExtractor(ast);
+        var pkb = designExtractor.Extract();
 
 
 
