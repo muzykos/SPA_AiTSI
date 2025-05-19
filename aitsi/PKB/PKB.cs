@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace aitsi.PKB
 {
-     class PKB
+     public class PKB
     {
         private AST ast;
 
