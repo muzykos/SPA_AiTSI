@@ -93,7 +93,6 @@ class Program
 
                     Console.WriteLine("\n Wynik zapytania:");
                     string result = Evaluator.Evaluate(pqlTree, pkb);
-                    Console.WriteLine("ayo cos mamy!!");
                     Console.WriteLine(result);
                 }
                 catch (Exception e)

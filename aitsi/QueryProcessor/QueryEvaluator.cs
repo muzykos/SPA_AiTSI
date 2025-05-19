@@ -154,7 +154,7 @@ namespace aitsi
         {
             int leftSize = cache.ContainsKey(clause.variables[0]) ? cache[clause.variables[0]].Count : 1000;
             int rightSize = cache.ContainsKey(clause.variables[1]) ? cache[clause.variables[1]].Count : 1000;
-            return leftSize * rightSize;
+            return leftSize * rightSize; //liczba kombinacji - im wiecej tym dluzej sprawdzanie, tym mniej oplacalne sprawdzanie
         }
     }
 }
