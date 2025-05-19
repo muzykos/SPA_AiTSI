@@ -29,6 +29,7 @@ namespace aitsi.PKB
         private Dictionary<int, HashSet<int>> parentStar = new();
         private Dictionary<string, List<string>> calls = new(); 
         private Dictionary<string, HashSet<string>> callsStar = new();
+        private int stmtCounter = 1;
 
         private Dictionary<string, List<int>> procToStmts = new();
 
@@ -120,6 +121,7 @@ namespace aitsi.PKB
 
             int number = 1;
             int stmtNum = number++;
+            //     int stmtNum = stmtCounter++;
 
             statements[stmtNum] = stmtNode;
             procToStmts[procName].Add(stmtNum);
@@ -630,45 +632,45 @@ namespace aitsi.PKB
         }
         // GETTERY dla potrzebnych prywatnych map i tabel
 
-        public Dictionary<int, TNode> GetStatementTable()
-        {
-            return statementTable;
-        }
+        //public Dictionary<int, TNode> GetStatementTable()
+        //{
+        //    return statementTable;
+        //}
 
-        public Dictionary<string, List<TNode>> GetVariableTable()
-        {
-            return variableTable;
-        }
+        //public Dictionary<string, List<TNode>> GetVariableTable()
+        //{
+        //    return variableTable;
+        //}
 
-        public Dictionary<string, List<TNode>> GetConstantTable()
-        {
-            return constantTable;
-        }
+        //public Dictionary<string, List<TNode>> GetConstantTable()
+        //{
+        //    return constantTable;
+        //}
 
-        public Dictionary<string, TNode> GetProcedureTable()
-        {
-            return procedureTable;
-        }
+        //public Dictionary<string, TNode> GetProcedureTable()
+        //{
+        //    return procedureTable;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetModifiesMap()
-        {
-            return modifiesMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetModifiesMap()
+        //{
+        //    return modifiesMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetUsesMap()
-        {
-            return usesMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetUsesMap()
+        //{
+        //    return usesMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetParentStarMap()
-        {
-            return parentStarMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetParentStarMap()
+        //{
+        //    return parentStarMap;
+        //}
 
-        public Dictionary<TNode, HashSet<TNode>> GetFollowsStarMap()
-        {
-            return followsStarMap;
-        }
+        //public Dictionary<TNode, HashSet<TNode>> GetFollowsStarMap()
+        //{
+        //    return followsStarMap;
+        //}
 
     }
 }
