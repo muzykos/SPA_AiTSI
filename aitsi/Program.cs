@@ -17,7 +17,6 @@ class Program
         var ast = new AST();
         var parser = new Parser(lexer, ast);
         var designExtractor = new DesignExtractor(ast);
-        var pkb = designExtractor.Extract();
 
 
 
@@ -69,6 +68,7 @@ class Program
         {
             parser.parseProgram();
             Console.WriteLine("Parsing completed successfully!");
+            var pkb = designExtractor.Extract();
             pkb.ExtractInformation();
             Console.WriteLine("PKB extraction completed.\n");
 
