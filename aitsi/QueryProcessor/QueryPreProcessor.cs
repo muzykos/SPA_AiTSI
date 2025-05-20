@@ -166,6 +166,7 @@ namespace aitsi
                         var selectVar = match.Groups[1].Value;
                         var remainingPart = match.Groups[2].Value;
                         var selectNode = new SelectNode(selectVar);
+
                         while (!string.IsNullOrEmpty(remainingPart))
                         {
                             if (remainingPart.StartsWith("such that", StringComparison.OrdinalIgnoreCase))

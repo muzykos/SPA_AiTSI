@@ -53,6 +53,7 @@ public class DeclarationNode : Node
         this.name = $"Declaration: {type} ({string.Join(", ", variables)})";
         this.type = type;
         this.variables = variables;
+    //    this.type = "Declaration";
     }
 }
 
@@ -62,6 +63,7 @@ public class SelectNode : Node
     {
         this.name = $"Select: {variable}";
         this.variables.Add(variable);
+        this.type = "Select"; 
     }
 }
 
