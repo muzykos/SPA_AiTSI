@@ -126,7 +126,6 @@ namespace aitsi
                             match.Groups[1].Value,
                             variables
                         );
-                        declaration.name = "Declaration";
                         query.addChild(declaration);
                     }
                 }
@@ -138,7 +137,6 @@ namespace aitsi
                         var selectVar = match.Groups[1].Value;
                         var remainingPart = match.Groups[2].Value;
                         var selectNode = new SelectNode(selectVar);
-                        selectNode.name = "Select";
 
                         while (!string.IsNullOrEmpty(remainingPart))
                         {
