@@ -10,7 +10,7 @@ namespace aitsi
         public static string evaluateAssignments(string assignments)
         {
             if (string.IsNullOrWhiteSpace(assignments))
-                throw new Exception("Nie podano deklaracji.");
+                return "";
 
             if (!assignments.EndsWith(';')) throw new Exception("Nie zakończono poprawnie deklaracji.");
 
