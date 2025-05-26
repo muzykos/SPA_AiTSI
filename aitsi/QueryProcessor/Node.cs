@@ -62,7 +62,6 @@ public class SelectNode : Node
     public SelectNode(string variable)
     {
         this.name = $"Select: ({variable})";
-        this.variables.Add(variable);
         this.type = "Select";
     }
 }

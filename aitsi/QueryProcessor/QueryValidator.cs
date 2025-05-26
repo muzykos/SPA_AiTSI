@@ -30,13 +30,22 @@ namespace aitsi.QueryProcessor
         private static void validatePatterns(SelectNode tree)
         {
             Node[] declarations = tree.getChildreenByName("Pattern");
+            string[] assignPatternTypes = ["any", "exact", "subexpression"];
             foreach (Node declaration in declarations)
             {
-                Console.WriteLine("Walidacja patterna w toku.");
-
-                
-
-                //throw new Exception("Niepoprawna składnia 'pattern'.");
+                validateIfVarRef(tree.parent, declaration.variables[1]);
+                switch (declaration.variables.Count())
+                {
+                    case 4:
+                        if (!validateIfSynonym(tree.parent, declaration.variables[0], "if")) throw new Exception("Podano niepoprawny synonim do patterna w stylu 'if'.");
+                        break;
+                    case 3:
+                        if (declaration.type == "any" && validateIfSynonym(tree.parent, declaration.variables[0], "while"))break;                
+                        else if (assignPatternTypes.Contains(declaration.type) && validateIfSynonym(tree.parent, declaration.variables[0], "assign"))break;                                                  
+                        throw new Exception("Podany pattern nie pasuje do żadnego ze znanych rodzajów patterna.");
+                    default:
+                        throw new Exception("Błąd logiczny pattern. Liczba argumentów nie odpowiada żadnemu z rodzaji patterna.");
+                }
             }
         }
 
@@ -127,9 +136,9 @@ namespace aitsi.QueryProcessor
         }
 
         private static bool validateReturnParameters(QueryNode tree)
-        {
-            foreach(string value in tree.getChildByName("select").variables)            
-                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && !validateIfSynonym(tree, value)) throw new Exception();
+        {          
+            foreach (string value in tree.getChildByName("select").variables)            
+                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && !validateIfSynonym(tree, value)) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
             
             return true;
 
@@ -138,7 +147,6 @@ namespace aitsi.QueryProcessor
             //if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
             //if (validateIfSynonym(tree, returnValue)) return true;
             //throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
-
         }
 
         private static bool validateIfSynonym(Node tree, string value, string type = "")
