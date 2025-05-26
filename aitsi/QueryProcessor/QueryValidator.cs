@@ -9,10 +9,11 @@ namespace aitsi.QueryProcessor
         public static string evaluateQueryLogic(QueryNode tree)
         {
             checkDuplicates(tree);
-            validateReturnParameter(tree);
+            validateReturnParameters(tree);
             SelectNode select = (SelectNode)tree.getChildByName("select");
             validateClauses(select);
             validateWiths(select);
+            validatePatterns(select);
 
             return "Drzewo jest poprawne logicznie.";
         }
@@ -23,6 +24,19 @@ namespace aitsi.QueryProcessor
             foreach (Node declaration in declarations)
             {
                 if (validateRef(tree.parent, declaration.variables[0]) != validateRef(tree.parent, declaration.variables[1])) throw new Exception("Wartości podane w 'with' muszą być tego samego typu.");
+            }
+        }
+
+        private static void validatePatterns(SelectNode tree)
+        {
+            Node[] declarations = tree.getChildreenByName("Pattern");
+            foreach (Node declaration in declarations)
+            {
+                Console.WriteLine("Walidacja patterna w toku.");
+
+                
+
+                //throw new Exception("Niepoprawna składnia 'pattern'.");
             }
         }
 
@@ -112,13 +126,19 @@ namespace aitsi.QueryProcessor
             }
         }
 
-        private static bool validateReturnParameter(QueryNode tree)
+        private static bool validateReturnParameters(QueryNode tree)
         {
-            if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość."); 
-            string returnValue = tree.getChildByName("select").variables[0];
-            if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
-            if (validateIfSynonym(tree, returnValue)) return true;
-            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
+            foreach(string value in tree.getChildByName("select").variables)            
+                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && !validateIfSynonym(tree, value)) throw new Exception();
+            
+            return true;
+
+            //if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość.");
+            //string returnValue = tree.getChildByName("select").variables[0];
+            //if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
+            //if (validateIfSynonym(tree, returnValue)) return true;
+            //throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
+
         }
 
         private static bool validateIfSynonym(Node tree, string value, string type = "")

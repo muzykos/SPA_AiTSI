@@ -50,14 +50,17 @@ namespace aitsi
             var matches = Regex.Matches(query, @"\"".*?\""|\w+(?:\.\w+)*[#*]?|[^\s\w]");
             string[] queryParts = new string[matches.Count];
 
-            for (int i = 0; i < matches.Count; i++) queryParts[i] += matches[i].Value;
+            for (int y = 0; y < matches.Count; y++) queryParts[y] += matches[y].Value;
 
             //int j = 0;
             //foreach (var item in queryParts) Console.WriteLine(j++ + " " + item);
 
             validateIfStartsWithSelect(queryParts[0]);
+            int i = 2;
+            if (queryParts[1] == "<") i += validateTuple(queryParts);
+            else validateIfVariableIsCorrect(queryParts[1]);
 
-            for (int i = 2; i < queryParts.Length;)
+            for (; i < queryParts.Length;)
             {
                 switch (queryParts[i].Trim().ToLower())
                 {
@@ -83,7 +86,7 @@ namespace aitsi
                         } while (++i < queryParts.Length && queryParts[i] == "and");
                         break;
                     default:
-                        throw new Exception("Zapytanie ma niepoprawną składnię. W miejscu such that lub with, wystąpiło: " + queryParts[i]);
+                        throw new Exception("Zapytanie ma niepoprawną składnię. W miejscu such that, with lub pattern, wystąpiło: " + queryParts[i]);
                 }
             }
 
@@ -94,6 +97,30 @@ namespace aitsi
         {
             if (firstValue.Trim().ToLower() != "select") throw new Exception("Zapytanie nie rozpoczęto od 'Select'.");
             return true;
+        }
+
+        private static int validateTuple(string[] queryParts)
+        {
+            for(int i = 2; i<queryParts.Length; i++)
+            {
+                switch (i%2)
+                {
+                    case 0:
+                        validateIfVariableIsCorrect(queryParts[i]);
+                        break;
+                    case 1:
+                        if (queryParts[i] == ",") break;
+                        else if (queryParts[i] == ">") return i-1;
+                        else throw new Exception("W tuple pojawił się niepoprawny znak. Znak: " + queryParts[i]);
+                    default:  throw new Exception("Nierozpoznany błąd składni tuple. Wartość błędna: " + queryParts[i]);      
+                }
+            }
+            throw new Exception("Nieodpowiednia składnia tuple. Nie napotkanu znaku zamykającego, czyli '>'.");
+        }
+
+        private static void validateIfVariableIsCorrect(string value) 
+        {
+            if (allowedRelRefs.Contains(value) || declarationTypes.Contains(value)) throw new Exception("Błąd składni tuple. Błędna wartość: " + value);
         }
 
         private static int validateSuchThat(string[] suchThat)
@@ -119,17 +146,17 @@ namespace aitsi
             string oneString = String.Join("", pattern);
             //Console.WriteLine(oneString);
 
-            Regex checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+""|_)\s*,\s*_\s*\)");
-            if (checkPattern.IsMatch(oneString)) return oneString.Length; //while
+            Regex checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*\)");
+            if (checkPattern.IsMatch(oneString)) return oneString.Length; //while i assign, z podłogą zamiast expr
 
-            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+""|_)\s*,\s*_\s*,\s*_\s*\)");
+            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*,\s*_\s*\)");
             if (checkPattern.IsMatch(oneString)) return oneString.Length;//if
 
             //assign
-            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|_)\s*,\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*\)$");
+            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*\)$");
             if (checkPattern.IsMatch(oneString)) return oneString.Length;
 
-            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|_)\s*,\s*_\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*_\s*\)$");
+            checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*_\s*\)$");
             if (checkPattern.IsMatch(oneString)) return oneString.Length;
 
             throw new Exception("Niepoprawna składnia 'pattern'.");

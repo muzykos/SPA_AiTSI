@@ -92,6 +92,8 @@ class Program
                     Console.WriteLine("\n Struktura zapytania:");
                     DrawTree(pqlTree);
 
+                    Console.WriteLine(evaluateQueryLogic(pqlTree));
+
                     Console.WriteLine("\n Wynik zapytania:");
                     string result = Evaluator.Evaluate(pqlTree, pkb);
                     Console.WriteLine(result);
