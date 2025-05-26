@@ -199,7 +199,10 @@ namespace aitsi
                             var variables = selectVar.Trim('<', '>').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                             selectNode = new SelectNode(string.Join(", ", variables));
                             foreach (var varName in variables)
+                            {
+                                Console.WriteLine(varName);
                                 selectNode.variables.Add(varName);
+                            }
                         }
                         else
                         {
@@ -294,9 +297,7 @@ namespace aitsi
                                             matchType = "any";
                                         }
 
-                                        var patternNode = new PatternNode(patternType, arg1, expr, matchType);
-                                        if (arg3 != null)
-                                            patternNode.variables.Add(arg3);
+                                        var patternNode = new PatternNode(patternType, arg1, expr, arg3, matchType);
 
                                         selectNode.addChild(patternNode);
                                         remainingPart = remainingPart.Substring(patternMatch.Length).Trim();
