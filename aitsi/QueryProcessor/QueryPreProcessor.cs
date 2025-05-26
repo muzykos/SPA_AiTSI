@@ -101,24 +101,24 @@ namespace aitsi
 
         private static int validateTuple(string[] queryParts)
         {
-            for(int i = 2; i<queryParts.Length; i++)
+            for (int i = 2; i < queryParts.Length; i++)
             {
-                switch (i%2)
+                switch (i % 2)
                 {
                     case 0:
                         validateIfVariableIsCorrect(queryParts[i]);
                         break;
                     case 1:
                         if (queryParts[i] == ",") break;
-                        else if (queryParts[i] == ">") return i-1;
+                        else if (queryParts[i] == ">") return i - 1;
                         else throw new Exception("W tuple pojawił się niepoprawny znak. Znak: " + queryParts[i]);
-                    default:  throw new Exception("Nierozpoznany błąd składni tuple. Wartość błędna: " + queryParts[i]);      
+                    default: throw new Exception("Nierozpoznany błąd składni tuple. Wartość błędna: " + queryParts[i]);
                 }
             }
             throw new Exception("Nieodpowiednia składnia tuple. Nie napotkanu znaku zamykającego, czyli '>'.");
         }
 
-        private static void validateIfVariableIsCorrect(string value) 
+        private static void validateIfVariableIsCorrect(string value)
         {
             if (allowedRelRefs.Contains(value) || declarationTypes.Contains(value)) throw new Exception("Błąd składni tuple. Błędna wartość: " + value);
         }
@@ -187,12 +187,24 @@ namespace aitsi
                 }
                 else if (trimmed.StartsWith("Select"))
                 {
-                    var match = Regex.Match(trimmed, @"Select\s+(\w+)\s+(.+)", RegexOptions.IgnoreCase);
+                    var match = Regex.Match(trimmed, @"Select\s+(<[^>]+>|\w+)\s*(.*)", RegexOptions.IgnoreCase);
                     if (match.Success)
                     {
                         var selectVar = match.Groups[1].Value;
                         var remainingPart = match.Groups[2].Value;
-                        var selectNode = new SelectNode(selectVar);
+                        SelectNode selectNode;
+
+                        if (selectVar.StartsWith("<"))
+                        {
+                            var variables = selectVar.Trim('<', '>').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                            selectNode = new SelectNode(string.Join(", ", variables));
+                            foreach (var varName in variables)
+                                selectNode.variables.Add(varName);
+                        }
+                        else
+                        {
+                            selectNode = new SelectNode(selectVar);
+                        }
 
                         while (!string.IsNullOrEmpty(remainingPart))
                         {
@@ -258,24 +270,34 @@ namespace aitsi
 
                                 do
                                 {
-                                    var patternMatch = Regex.Match(remainingPart, @"(\w+)\s*\(\s*(\w+|_)\s*,\s*(?:(?:_""([^""]+)""_)|""([^""]+)""|_)\s*\)", RegexOptions.IgnoreCase);
+                                    var patternMatch = Regex.Match(remainingPart, @"(\w+)\s*\(\s*([^,]+)\s*,\s*([^,()]+)(?:\s*,\s*([^,()]+))?\s*\)", RegexOptions.IgnoreCase);
+
                                     if (patternMatch.Success)
                                     {
-                                        var assignVar = patternMatch.Groups[1].Value.Trim();
-                                        var left = patternMatch.Groups[2].Value.Trim();
-                                        string right = "";
-                                        string matchType = "";
-                                        if (patternMatch.Groups[3].Success)
+                                        var patternType = patternMatch.Groups[1].Value.Trim();
+                                        var arg1 = patternMatch.Groups[2].Value.Trim();
+                                        var arg2 = patternMatch.Groups[3].Value.Trim();
+                                        var arg3 = patternMatch.Groups[4].Success ? patternMatch.Groups[4].Value.Trim() : null;
+
+                                        string matchType = "any";
+                                        string expr = arg2;
+
+                                        var quoted = Regex.Match(arg2, @"^_?""([^""]+)""_?$");
+                                        if (quoted.Success)
                                         {
-                                            right = patternMatch.Groups[3].Value.Trim();
-                                            matchType = "subexpression";
+                                            expr = quoted.Groups[1].Value;
+                                            matchType = arg2.StartsWith("_") ? "subexpression" : "exact";
                                         }
-                                        else if (patternMatch.Groups[4].Success)
+                                        else if (arg2 == "_")
                                         {
-                                            right = patternMatch.Groups[4].Value.Trim();
-                                            matchType = "exact";
+                                            expr = "_";
+                                            matchType = "any";
                                         }
-                                        var patternNode = new PatternNode(assignVar, left, right, matchType);
+
+                                        var patternNode = new PatternNode(patternType, arg1, expr, matchType);
+                                        if (arg3 != null)
+                                            patternNode.variables.Add(arg3);
+
                                         selectNode.addChild(patternNode);
                                         remainingPart = remainingPart.Substring(patternMatch.Length).Trim();
                                     }
