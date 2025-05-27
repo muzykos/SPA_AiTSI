@@ -138,7 +138,7 @@ namespace aitsi.QueryProcessor
         private static bool validateReturnParameters(QueryNode tree)
         {          
             foreach (string value in tree.getChildByName("select").variables)            
-                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && !validateIfSynonym(tree, value)) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && (!validateIfSynonym(tree, value) || validateIfAttrRef(tree, value)!=null)) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
             
             return true;
 
