@@ -9,10 +9,11 @@ namespace aitsi.QueryProcessor
         public static string evaluateQueryLogic(QueryNode tree)
         {
             checkDuplicates(tree);
-            validateReturnParameter(tree);
+            validateReturnParameters(tree);
             SelectNode select = (SelectNode)tree.getChildByName("select");
             validateClauses(select);
             validateWiths(select);
+            validatePatterns(select);
 
             return "Drzewo jest poprawne logicznie.";
         }
@@ -26,11 +27,33 @@ namespace aitsi.QueryProcessor
             }
         }
 
+        private static void validatePatterns(SelectNode tree)
+        {
+            Node[] declarations = tree.getChildreenByName("Pattern");
+            string[] assignPatternTypes = ["any", "exact", "subexpression"];
+            foreach (Node declaration in declarations)
+            {
+                validateIfVarRef(tree.parent, declaration.variables[1]);
+                switch (declaration.variables.Count())
+                {
+                    case 4:
+                        if (!validateIfSynonym(tree.parent, declaration.variables[0], "if")) throw new Exception("Podano niepoprawny synonim do patterna w stylu 'if'.");
+                        break;
+                    case 3:
+                        if (declaration.type == "any" && validateIfSynonym(tree.parent, declaration.variables[0], "while")) break;
+                        else if (assignPatternTypes.Contains(declaration.type) && validateIfSynonym(tree.parent, declaration.variables[0], "assign")) break;
+                        throw new Exception("Podany pattern nie pasuje do żadnego ze znanych rodzajów patterna.");
+                    default:
+                        throw new Exception("Błąd logiczny pattern. Liczba argumentów nie odpowiada żadnemu z rodzaji patterna.");
+                }
+            }
+        }
+
         private static string validateRef(Node tree, string value)
         {
             string isAttrRef = validateIfAttrRef(tree, value);
             if (isAttrRef != null) return isAttrRef;
-            if (validateSynonym(tree, value, "prog_line")) return "integer";
+            if (validateIfSynonym(tree, value, "prog_line")) return "integer";
             string pattern = "(\"?)";
             if (validateIfIDENT(Regex.Replace(value, pattern, String.Empty))) return "charstr";
             if (validateIfInteger(value)) return "integer";
@@ -42,7 +65,7 @@ namespace aitsi.QueryProcessor
             if (value == null) return null;
             var parts = value.Split('.');
             if (parts.Length < 2) return null;
-            if (!validateSynonym(tree, parts[0]))return null;
+            if (!validateIfSynonym(tree, parts[0])) return null;
             switch (parts[1])
             {
                 case "procName":
@@ -65,20 +88,32 @@ namespace aitsi.QueryProcessor
                 {
                     case "modifies":
                     case "uses":
-                        validateIfStmtRef(tree.parent, declaration.variables[0]);
-                        validateIfEntRef(tree.parent, declaration.variables[1]);
+                        try
+                        {
+                            validateIfStmtRef(tree.parent, declaration.variables[0]);
+                        }
+                        catch (Exception e)
+                        {
+                            validateIfProcRef(tree.parent, declaration.variables[0]);
+                        }
+                        validateIfVarRef(tree.parent, declaration.variables[1]);
                         break;
                     case "parent":
                     case "parent*":
                     case "follows":
                     case "follows*":
                         validateIfStmtRef(tree.parent, declaration.variables[0]);
-                        validateIfStmtRef(tree.parent, declaration.variables[1]);                        
+                        validateIfStmtRef(tree.parent, declaration.variables[1]);
                         break;
                     case "calls":
                     case "calls*":
-                        validateIfEntRef(tree.parent, declaration.variables[0]);
-                        validateIfEntRef(tree.parent, declaration.variables[1]);
+                        validateIfProcRef(tree.parent, declaration.variables[0]);
+                        validateIfProcRef(tree.parent, declaration.variables[1]);
+                        break;
+                    case "next":
+                    case "next*":
+                        validateIfLineRef(tree.parent, declaration.variables[0]);
+                        validateIfLineRef(tree.parent, declaration.variables[1]);
                         break;
                     default:
                         throw new Exception("Podana relacja nie została jeszcze zaimplementowana.");
@@ -92,7 +127,7 @@ namespace aitsi.QueryProcessor
             List<string> variables = new List<string>();
             foreach (Node declaration in declarations)
             {
-                foreach(string variable in declaration.variables)
+                foreach (string variable in declaration.variables)
                 {
                     if (variables.Contains(variable)) throw new Exception("Na liście zmiennych znajdują się duplikaty. Duplikat: " + variable);
                     variables.Add(variable);
@@ -100,24 +135,26 @@ namespace aitsi.QueryProcessor
             }
         }
 
-        private static bool validateReturnParameter(QueryNode tree)
+        private static bool validateReturnParameters(QueryNode tree)
         {
-            if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość."); 
-            string returnValue = tree.getChildByName("select").variables[0];
-            if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
-            if (validateSynonym(tree, returnValue)) return true;
-            throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
+            List<string> temp = tree.getChildByName("select").variables;
+            if (temp.Count == 1 && allowedValuesInReturnParameter.Contains(temp[0].ToLower()))return true;
+
+            foreach (string value in temp)           
+                if (!validateIfSynonym(tree, value) && validateIfAttrRef(tree, value) == null) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+            
+            return true;           
         }
 
-        private static bool validateSynonym(Node tree, string value, string type = "")
+        private static bool validateIfSynonym(Node tree, string value, string type = "")
         {
             Node[] declarations = tree.getChildreenByName("Declaration");
-            if(!validateIfIDENT(value)) return false;
+            if (!validateIfIDENT(value)) return false;
             foreach (Node declaration in declarations)
             {
                 if (declaration.variables.Contains(value) && type != "" && declaration.type.ToLower() == type) return true;
                 else if (declaration.variables.Contains(value) && type == "") return true;
-            }          
+            }
             return false;
         }
 
@@ -125,17 +162,32 @@ namespace aitsi.QueryProcessor
         {
             if (value == "_") return true;
             if (validateIfInteger(value)) return true;
-            if (validateSynonym(tree, value)) return true;
+            if (validateIfSynonym(tree, value)) return true;
             throw new Exception("Podano nieprawidłową wartość jako stmtRef. Podana wartość: " + value);
         }
 
-        private static bool validateIfEntRef(Node tree, string value)
+        private static bool validateIfLineRef(Node tree, string value)
         {
             if (value == "_") return true;
-            if(validateIfInteger(value))return true;
-            if (validateSynonym(tree, value)) return true;
-            if(value.StartsWith("\"") && value.EndsWith("\"") && validateIfIDENT(value.Substring(1, value.Length-2)))return true;
-            throw new Exception("Podano nieprawidłową wartość jako entRef. Podana wartość: " + value);
+            if (validateIfInteger(value)) return true;
+            if (validateIfSynonym(tree, value)) return true;
+            throw new Exception("Podano nieprawidłową wartość jako lineRef. Podana wartość: " + value);
+        }
+
+        private static bool validateIfProcRef(Node tree, string value)
+        {
+            if (value == "_") return true;
+            if (value.StartsWith("\"") && value.EndsWith("\"") && validateIfIDENT(value.Substring(1, value.Length - 2))) return true;
+            if (validateIfSynonym(tree, value)) return true;
+            throw new Exception("Podano nieprawidłową wartość jako procRef. Podana wartość: " + value);
+        }
+
+        private static bool validateIfVarRef(Node tree, string value)
+        {
+            if (value == "_") return true;
+            if (value.StartsWith("\"") && value.EndsWith("\"") && validateIfIDENT(value.Substring(1, value.Length - 2))) return true;
+            if (validateIfSynonym(tree, value)) return true;
+            throw new Exception("Podano nieprawidłową wartość jako varRef. Podana wartość: " + value);
         }
 
         private static bool validateIfInteger(string value)
