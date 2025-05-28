@@ -74,7 +74,6 @@ class Program
             }
             Console.WriteLine("Parsing completed successfully!");
             var pkb = designExtractor.Extract();
-            pkb.ExtractInformation();
             Console.WriteLine("PKB extraction completed.\n");
 
             while (true)
