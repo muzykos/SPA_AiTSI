@@ -119,9 +119,7 @@ namespace aitsi.PKB
             }
 
 
-            int number = 1;
-            int stmtNum = number++;
-            //     int stmtNum = stmtCounter++;
+                 int stmtNum = stmtCounter++;
 
             statements[stmtNum] = stmtNode;
             procToStmts[procName].Add(stmtNum);
