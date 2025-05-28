@@ -17,6 +17,7 @@ namespace aitsi.Parser
             TNode node = new();
             node.setType(nodeType);
             node.setAttr(attr);
+            node.setStmtNumber(stmtNumber);
             return node;
         }
 
@@ -84,7 +85,12 @@ namespace aitsi.Parser
 
         public static void PrintAST(TNode node, int indent, TextWriter writer)
         {
-            writer.WriteLine(new string(' ', indent * 2) + $"{node.getType()} ({node.getAttr()})");
+            string indentSpaces = new string(' ', indent * 2);
+
+            int stmtNumber = node.getStmtNumber();
+            string stmtPrefix = stmtNumber > 0 ? $"[{stmtNumber}] " : "";
+
+            writer.WriteLine($"{indentSpaces}{stmtPrefix}{node.getType()} ({node.getAttr()})");
 
             foreach (var child in node.getChildren())
             {
@@ -94,9 +100,13 @@ namespace aitsi.Parser
             var follows = node.getFollows();
             if (follows != null)
             {
-                writer.WriteLine(new string(' ', indent * 2) + $"FOLLOWS -> {follows.getType()} ({follows.getAttr()})");
+                int followsStmtNumber = follows.getStmtNumber();
+                string followsPrefix = followsStmtNumber > 0 ? $"[{followsStmtNumber}] " : "";
+
+                writer.WriteLine($"{indentSpaces}FOLLOWS -> {followsPrefix}{follows.getType()} ({follows.getAttr()})");
             }
         }
+
 
     }
 }

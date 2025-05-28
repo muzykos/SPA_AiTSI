@@ -67,6 +67,11 @@ class Program
         try
         {
             parser.parseProgram();
+            var path = Path.Combine(projectPath, "ast_output.txt");
+            using (var writer = new StreamWriter(path))
+            {
+                AST.PrintAST(ast.getRoot(), 0, writer);
+            }
             Console.WriteLine("Parsing completed successfully!");
             var pkb = designExtractor.Extract();
             pkb.ExtractInformation();
