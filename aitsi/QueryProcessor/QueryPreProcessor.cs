@@ -140,11 +140,28 @@ namespace aitsi
             return true;
         }
 
+        private static bool HasBalancedParentheses(string input)
+        {
+            int balance = 0;
+
+            foreach (char c in input)
+            {
+                if (c == '(') balance++;
+                else if (c == ')') balance--;
+
+                if (balance < 0) return false; // zamykający nawias bez otwierającego
+            }
+
+            return balance == 0;
+        }
+
+
         private static int validatePattern(string[] pattern)
         {
             if (pattern.Length < 6) throw new Exception("Niepoprawna składnia, nie podano nic po 'pattern'.");
             string oneString = String.Join("", pattern);
             //Console.WriteLine(oneString);
+            if(!HasBalancedParentheses(oneString))throw new Exception("Niepoprawna ilość nawiasów w składni pattern. Pattern: " + oneString);
 
             Regex checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*\)");
             if (checkPattern.IsMatch(oneString)) return oneString.Length; //while i assign, z podłogą zamiast expr
@@ -198,15 +215,12 @@ namespace aitsi
                         {
                             var variables = selectVar.Trim('<', '>').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                             selectNode = new SelectNode(string.Join(", ", variables));
-                            foreach (var varName in variables)
-                            {
-                                Console.WriteLine(varName);
-                                selectNode.variables.Add(varName);
-                            }
+                            foreach (var varName in variables) selectNode.variables.Add(varName);
                         }
                         else
                         {
                             selectNode = new SelectNode(selectVar);
+                            selectNode.variables.Add(selectVar);
                         }
 
                         while (!string.IsNullOrEmpty(remainingPart))

@@ -40,8 +40,8 @@ namespace aitsi.QueryProcessor
                         if (!validateIfSynonym(tree.parent, declaration.variables[0], "if")) throw new Exception("Podano niepoprawny synonim do patterna w stylu 'if'.");
                         break;
                     case 3:
-                        if (declaration.type == "any" && validateIfSynonym(tree.parent, declaration.variables[0], "while"))break;                
-                        else if (assignPatternTypes.Contains(declaration.type) && validateIfSynonym(tree.parent, declaration.variables[0], "assign"))break;                                                  
+                        if (declaration.type == "any" && validateIfSynonym(tree.parent, declaration.variables[0], "while")) break;
+                        else if (assignPatternTypes.Contains(declaration.type) && validateIfSynonym(tree.parent, declaration.variables[0], "assign")) break;
                         throw new Exception("Podany pattern nie pasuje do żadnego ze znanych rodzajów patterna.");
                     default:
                         throw new Exception("Błąd logiczny pattern. Liczba argumentów nie odpowiada żadnemu z rodzaji patterna.");
@@ -65,7 +65,7 @@ namespace aitsi.QueryProcessor
             if (value == null) return null;
             var parts = value.Split('.');
             if (parts.Length < 2) return null;
-            if (!validateIfSynonym(tree, parts[0]))return null;
+            if (!validateIfSynonym(tree, parts[0])) return null;
             switch (parts[1])
             {
                 case "procName":
@@ -103,7 +103,7 @@ namespace aitsi.QueryProcessor
                     case "follows":
                     case "follows*":
                         validateIfStmtRef(tree.parent, declaration.variables[0]);
-                        validateIfStmtRef(tree.parent, declaration.variables[1]);                        
+                        validateIfStmtRef(tree.parent, declaration.variables[1]);
                         break;
                     case "calls":
                     case "calls*":
@@ -127,7 +127,7 @@ namespace aitsi.QueryProcessor
             List<string> variables = new List<string>();
             foreach (Node declaration in declarations)
             {
-                foreach(string variable in declaration.variables)
+                foreach (string variable in declaration.variables)
                 {
                     if (variables.Contains(variable)) throw new Exception("Na liście zmiennych znajdują się duplikaty. Duplikat: " + variable);
                     variables.Add(variable);
@@ -136,28 +136,25 @@ namespace aitsi.QueryProcessor
         }
 
         private static bool validateReturnParameters(QueryNode tree)
-        {          
-            foreach (string value in tree.getChildByName("select").variables)            
-                if (!allowedValuesInReturnParameter.Contains(value.ToLower()) && (!validateIfSynonym(tree, value) || validateIfAttrRef(tree, value)!=null)) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
-            
-            return true;
+        {
+            List<string> temp = tree.getChildByName("select").variables;
+            if (temp.Count == 1 && allowedValuesInReturnParameter.Contains(temp[0].ToLower()))return true;
 
-            //if (tree.getChildByName("select").variables.Count() > 1) throw new Exception("Zapytanie Select może zwracać tylko jedną wartość.");
-            //string returnValue = tree.getChildByName("select").variables[0];
-            //if (allowedValuesInReturnParameter.Contains(returnValue.ToLower())) return true;
-            //if (validateIfSynonym(tree, returnValue)) return true;
-            //throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + returnValue);
+            foreach (string value in temp)           
+                if (!validateIfSynonym(tree, value) && validateIfAttrRef(tree, value) == null) throw new Exception("Podano nieprawidłową wartość do zwrócenia. Podana wartość: " + value);
+            
+            return true;           
         }
 
         private static bool validateIfSynonym(Node tree, string value, string type = "")
         {
             Node[] declarations = tree.getChildreenByName("Declaration");
-            if(!validateIfIDENT(value)) return false;
+            if (!validateIfIDENT(value)) return false;
             foreach (Node declaration in declarations)
             {
                 if (declaration.variables.Contains(value) && type != "" && declaration.type.ToLower() == type) return true;
                 else if (declaration.variables.Contains(value) && type == "") return true;
-            }          
+            }
             return false;
         }
 
