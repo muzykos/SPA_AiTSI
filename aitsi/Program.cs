@@ -10,7 +10,7 @@ class Program
     static void Main(String[] args)
     {
         string projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
-        string filePath = Path.Combine(projectPath, "program.txt");
+        string filePath = Path.Combine(projectPath, "kod_simple.txt");
         string source = File.ReadAllText(filePath);
 
         var lexer = new Lexer(source);
@@ -72,45 +72,49 @@ class Program
             {
                 AST.PrintAST(ast.getRoot(), 0, writer);
             }
-            Console.WriteLine("Parsing completed successfully!");
+            //Console.WriteLine("Parsing completed successfully!");
             var pkb = designExtractor.Extract();
-            Console.WriteLine("PKB extraction completed.\n");
+            //Console.WriteLine("PKB extraction completed.\n");
+            Console.WriteLine("Ready");
 
             while (true)
             {
-                Console.WriteLine("\nPodaj zapytanie PQL lub wpisz 'exit' aby zakończyć:");
+                //Console.WriteLine("\nPodaj zapytanie PQL lub wpisz 'exit' aby zakończyć:");
+                string declarations = Console.ReadLine()?.Trim();
                 string query = Console.ReadLine()?.Trim();
-                if (query?.ToLower() == "exit") break;
+                //if (query?.ToLower() == "exit") break;
 
                 try
                 {
-                    var queryParts = Regex.Split(query, @"(?=select)", RegexOptions.IgnoreCase);
-                    if (queryParts.Length < 2)
-                        throw new Exception("Brak słowa 'Select' w zapytaniu.");
+                    //var queryParts = Regex.Split(query, @"(?=select)", RegexOptions.IgnoreCase);
+                    //if (queryParts.Length < 2)
+                    //    throw new Exception("Brak słowa 'Select' w zapytaniu.");
 
-                    Console.WriteLine("Deklaracja: " + evaluateAssignments(queryParts[0].Trim()));
-                    Console.WriteLine("Składnia zapytania: " + evaluateQuery(queryParts[1].Trim()));
+                    //Console.WriteLine("Deklaracja: " + evaluateAssignments(declarations.Trim()));
+                    evaluateAssignments(declarations.Trim());
+                    evaluateQuery(query.Trim());
 
-                    QueryNode pqlTree = Parse(query.Trim());
+                    QueryNode pqlTree = Parse(declarations.Trim() + query.Trim());
 
-                    Console.WriteLine("\n Struktura zapytania:");
-                    DrawTree(pqlTree);
+                    //Console.WriteLine("\n Struktura zapytania:");
+                    //DrawTree(pqlTree);
 
-                    Console.WriteLine(evaluateQueryLogic(pqlTree));
+                    //Console.WriteLine(evaluateQueryLogic(pqlTree));
+                    evaluateQueryLogic(pqlTree);
 
-                    Console.WriteLine("\n Wynik zapytania:");
+                    //Console.WriteLine("\n Wynik zapytania:");
                     string result = Evaluator.Evaluate(pqlTree, pkb);
                     Console.WriteLine(result);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("❌ Błąd: " + e.Message);
+                    Console.WriteLine("# Błąd: " + e.Message);
                 }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Parsing error: {ex.Message}");
+            Console.WriteLine($"# Parsing error: {ex.Message}");
         }
 
 

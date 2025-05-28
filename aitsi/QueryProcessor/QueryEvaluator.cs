@@ -162,13 +162,13 @@ namespace aitsi
                     }
                 }
 
-                return validTuples.Any() ? string.Join(", ", validTuples) : "brak wyników";
+                return validTuples.Any() ? string.Join(", ", validTuples) : "none";
             }
 
             // zwykle
             string selectedVariable = selectedVariables[0];
             if (!possibleBindings.ContainsKey(selectedVariable))
-                return "brak wyników";
+                return "none";
 
             var resultSet = possibleBindings[selectedVariable];
 
@@ -202,7 +202,7 @@ namespace aitsi
                 }
             }
 
-            return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wyników";
+            return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "none";
         }
 
 
@@ -270,7 +270,7 @@ namespace aitsi
         private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
         {
             var trimmedVar = var.Trim();
-            Console.WriteLine(var);
+            //Console.WriteLine(var);
 
             if (int.TryParse(trimmedVar, out _))
                 return new List<string> { trimmedVar };
@@ -294,7 +294,7 @@ namespace aitsi
             var vals = GetValuesForDeclarationType(declType, pkb);
             cache[trimmedVar] = vals;
 
-            Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
+            //Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
             return vals;
         }
 
@@ -324,7 +324,7 @@ namespace aitsi
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
 
-            Console.WriteLine($"Checking clause: {clause.relation}({leftVal}, {rightVal})");
+            //console.writeline($"checking clause: {clause.relation}({leftval}, {rightval})");
 
 
             return rel switch

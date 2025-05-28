@@ -151,7 +151,7 @@ namespace aitsi.QueryProcessor
             Node[] declarations = tree.getChildreenByName("Declaration");
             if (!validateIfIDENT(value)) return false;
             foreach (Node declaration in declarations)
-            {
+            {            
                 if (declaration.variables.Contains(value) && type != "" && declaration.type.ToLower() == type) return true;
                 else if (declaration.variables.Contains(value) && type == "") return true;
             }
@@ -198,7 +198,7 @@ namespace aitsi.QueryProcessor
 
         private static bool validateIfIDENT(string value)
         {
-            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*(#)?$")) return false;
+            if (!Regex.IsMatch(value, @"^[a-zA-Z][a-zA-Z0-9]*$")) return false;
             return true;
         }
     }
