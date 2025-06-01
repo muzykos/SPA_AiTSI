@@ -81,7 +81,7 @@ namespace aitsi
                     case "pattern":
                         do
                         {
-                            string[] stopWords = { "and", "such", "while" };
+                            string[] stopWords = { "and", "such", "with" };
                             i += validatePattern(queryParts.Skip(i + 1).TakeWhile(part => !stopWords.Contains(part, StringComparer.OrdinalIgnoreCase)).ToArray());
                         } while (++i < queryParts.Length && queryParts[i] == "and");
                         break;
@@ -164,17 +164,17 @@ namespace aitsi
             if (!HasBalancedParentheses(oneString)) throw new Exception("Niepoprawna ilość nawiasów w składni pattern. Pattern: " + oneString);
 
             Regex checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*\)");
-            if (checkPattern.IsMatch(oneString)) return oneString.Length; //while i assign, z podłogą zamiast expr
+            if (checkPattern.IsMatch(oneString)) return pattern.Length; //while i assign, z podłogą zamiast expr
 
             checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*,\s*_\s*\)");
-            if (checkPattern.IsMatch(oneString)) return oneString.Length;//if
+            if (checkPattern.IsMatch(oneString)) return pattern.Length;//if
 
             //assign
             checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*\)$");
-            if (checkPattern.IsMatch(oneString)) return oneString.Length;
+            if (checkPattern.IsMatch(oneString)) return pattern.Length;
 
             checkPattern = new Regex(@"^\w+\s*\(\s*(?:\w+|""\w+"")\s*,\s*_\s*""(?!-)(?:\(*\s*[a-zA-Z0-9]+\s*(?:[+\-*]\s*\(*\s*[a-zA-Z0-9]+\s*\)*)*\s*\)*\s*)+""\s*_\s*\)$");
-            if (checkPattern.IsMatch(oneString)) return oneString.Length;
+            if (checkPattern.IsMatch(oneString)) return pattern.Length;
 
             throw new Exception("Niepoprawna składnia 'pattern'.");
         }
