@@ -262,7 +262,7 @@ namespace aitsi
                             }
                             else if (prevClauseType == "with")
                             {
-                                var withMatch = Regex.Match(remainingPart, @"^([\w]+\.[\w#]+)\s*=\s*([\w]+\.[\w#]+|""[^""]+""|\d+)");
+                                var withMatch = Regex.Match(remainingPart, @"^([\w]+\.[\w#]+|\w+)\s*=\s*([\w]+\.[\w#]+|\w+|""[^""]+""|\d+)");
                                 if (withMatch.Success)
                                 {
                                     var left = withMatch.Groups[1].Value.Trim();
