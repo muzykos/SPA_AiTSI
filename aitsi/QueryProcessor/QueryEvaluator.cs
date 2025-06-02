@@ -1,133 +1,378 @@
 using aitsi.Parser;
 using ParserTNode = aitsi.Parser.TNode;
-
+using PKBClass = aitsi.PKB.PKB;
 
 namespace aitsi
 {
     static class Evaluator
     {
-        public static string Evaluate(QueryNode tree, PKB pkb)
+        //public static string Evaluate(QueryNode tree, PKBClass pkb)
+        //{
+        //    var selectNode = tree.getChildByType("Select") as SelectNode;
+        //    if (selectNode == null)
+        //        throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
+
+        //    var declarations = tree.children.OfType<DeclarationNode>().ToList();
+        //    var clauses = selectNode.children.OfType<ClauseNode>().ToList();
+        //    var withs = selectNode.children.OfType<WithNode>().ToList();
+
+        //    string selectedVariable = selectNode.variables[0];
+        //    Dictionary<string, List<string>> valueCache = new();
+        //    Dictionary<string, List<string>> possibleBindings = GetBindings(declarations, pkb, valueCache);
+
+        //    // najpierw boolean bo jak cos znajduje to mozna zakonczyc 
+        //    if (selectedVariable.Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        if (clauses.Count == 0) return "true";
+
+        //        foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
+        //        {
+        //            var leftVals = GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache);
+        //            var rightVals = GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache);
+
+        //            Console.WriteLine($"variables: {clause.variables[1]}, {clause.variables[0]}");
+
+        //        //    Console.WriteLine("wariable ", clause.variables[0], " ", clause.variables[1]);
+
+        //            foreach (var l in leftVals)
+        //            {
+        //                foreach (var r in rightVals)
+        //                {
+        //                    Console.WriteLine($"Checking clause: {clause.relation}({r}, {l})");
+        //                    if (ClauseSatisfied(clause, l, r, pkb))
+        //                    {
+        //                        Console.WriteLine("Clause satisfied!");
+        //                        return "true";
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        Console.WriteLine("twoja stara");
+        //        return "false";
+        //    }
+
+        //    if (!possibleBindings.ContainsKey(selectedVariable))
+        //        return "brak wyników";
+
+        //    var resultSet = possibleBindings[selectedVariable];
+
+        //    foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
+        //    {
+        //        string left = clause.variables[0];
+        //        string right = clause.variables[1];
+
+        //        //var leftVals = GetValuesForVariable(left, declarations, pkb, valueCache);
+        //        //var rightVals = GetValuesForVariable(right, declarations, pkb, valueCache);
+
+        //        //var leftIsVar = declarations.Any(d => d.variables.Contains(clause.variables[0]));
+        //        //var rightIsVar = declarations.Any(d => d.variables.Contains(clause.variables[1]));
+
+        //        var leftIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == left);
+        //        var rightIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == right);
+
+
+        //        var leftVals = leftIsVar
+        //            ? GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache)
+        //            : new List<string> { clause.variables[0] };
+
+        //        var rightVals = rightIsVar
+        //            ? GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache)
+        //            : new List<string> { clause.variables[1] };
+
+
+        //        if (left == selectedVariable)
+        //        {
+        //            resultSet = resultSet
+        //                .Where(l => rightVals.Any(r => ClauseSatisfied(clause, l, r, pkb)))
+        //                .ToList();
+        //        }
+        //        else if (right == selectedVariable)
+        //        {
+        //            resultSet = resultSet
+        //                .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
+        //                .ToList();
+        //        }
+        //    }
+
+        //    return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wyników";
+        //}
+
+        public static string Evaluate(QueryNode tree, PKBClass pkb)
         {
-            SelectNode select = (SelectNode)tree.getChildByType("Select");
-            string selectedVariable = select.variables[0];
+            var selectNode = tree.getChildByType("Select") as SelectNode;
+            if (selectNode == null)
+                throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
 
-            List<string> results = GetAllPossibleValues(selectedVariable, tree, pkb);
+            var declarations = tree.children.OfType<DeclarationNode>().ToList();
+            var clauses = selectNode.children.OfType<ClauseNode>().ToList();
+            var withs = selectNode.children.OfType<WithNode>().ToList();
 
-            foreach (var clause in select.children.OfType<ClauseNode>())
+            var selectedVariables = selectNode.variables;
+            Dictionary<string, List<string>> valueCache = new();
+            Dictionary<string, List<string>> possibleBindings = GetBindings(declarations, pkb, valueCache);
+
+            // BOOLEAN
+            if (selectedVariables.Count == 1 && selectedVariables[0].Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
             {
-                results = ApplyClause(results, clause, pkb);
-            }
+                if (clauses.Count == 0) return "true";
 
-            foreach (var with in select.children.OfType<WithNode>())
-            {
-                results = ApplyWith(results, with, pkb);
-            }
-
-            if (selectedVariable.ToLower() == "boolean")
-                return results.Any() ? "true" : "false";
-
-            return string.Join(", ", results);
-        }
-
-        private static List<string> GetAllPossibleValues(string variable, QueryNode tree, PKB pkb)
-        {
-            var entityType = tree.getChildByType("Declaration")?.type ?? "";
-
-            if (entityType == "stmt")
-            {
-                return pkb.GetStatementTable().Keys.Select(x => x.ToString()).ToList();
-            }
-            else if (entityType == "variable")
-            {
-                return pkb.GetVariableTable().Keys.ToList();
-            }
-            else if (entityType == "constant")
-            {
-                return pkb.GetConstantTable().Keys.ToList();
-            }
-            else if (entityType == "procedure")
-            {
-                return pkb.GetProcedureTable().Keys.ToList();
-            }
-
-            return new List<string>();
-        }
-
-        private static List<string> ApplyClause(List<string> currentResults, ClauseNode clause, PKB pkb)
-        {
-            return FilterByClause(currentResults, clause, pkb);
-        }
-
-        private static List<string> ApplyWith(List<string> currentResults, WithNode with, PKB pkb)
-        {
-            return FilterByWith(currentResults, with, pkb);
-        }
-
-
-
-        private static List<string> FilterByClause(List<string> currentResults, ClauseNode clause, PKB pkb)
-        {
-            List<string> filteredResults = new();
-
-            var modifiesMap = pkb.GetModifiesMap();
-            var usesMap = pkb.GetUsesMap();
-            var parentStarMap = pkb.GetParentStarMap();
-            var followsStarMap = pkb.GetFollowsStarMap();
-
-            foreach (var result in currentResults)
-            {
-                if (int.TryParse(result, out int stmtNumber))
+                foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
                 {
-                    var statementTable = pkb.GetStatementTable();
-                    if (statementTable.TryGetValue(stmtNumber, out ParserTNode stmtNode))
+                    var leftVals = GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache);
+                    var rightVals = GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache);
+
+                    foreach (var l in leftVals)
+                        foreach (var r in rightVals)
+                            if (ClauseSatisfied(clause, l, r, pkb))
+                                return "true";
+                }
+                return "false";
+            }
+
+            // tuple
+            if (selectedVariables.Count > 1)
+            {
+                var valueSets = selectedVariables
+                    .ToDictionary(var => var, var => GetValuesForVariable(var, declarations, pkb, valueCache));
+
+                var cartesianProduct = GenerateCombinations(valueSets);
+
+                var validTuples = new List<string>();
+
+                foreach (var tuple in cartesianProduct)
+                {
+                    bool allSatisfied = true;
+
+                    foreach (var clause in clauses)
                     {
-                        bool satisfies = false;
+                        var left = tuple.ContainsKey(clause.variables[0]) ? tuple[clause.variables[0]] : clause.variables[0];
+                        var right = tuple.ContainsKey(clause.variables[1]) ? tuple[clause.variables[1]] : clause.variables[1];
 
-                        if (clause.relation == "Modifies")
+                        if (!ClauseSatisfied(clause, left, right, pkb))
                         {
-                            satisfies = modifiesMap.TryGetValue(stmtNode, out var modifiedVars) &&
-                                        modifiedVars.Any(v => v.getAttr() == clause.variables[1]);
+                            allSatisfied = false;
+                            break;
                         }
-                        else if (clause.relation == "Uses")
-                        {
-                            satisfies = usesMap.TryGetValue(stmtNode, out var usedVars) &&
-                                        usedVars.Any(v => v.getAttr() == clause.variables[1]);
-                        }
-                        else if (clause.relation == "Parent")
-                        {
-                            satisfies = parentStarMap.TryGetValue(stmtNode, out var parents) &&
-                                        parents.Any(p => p.getAttr() == clause.variables[1]);
-                        }
-                        else if (clause.relation == "Follows")
-                        {
-                            satisfies = followsStarMap.TryGetValue(stmtNode, out var followers) &&
-                                        followers.Any(f => f.getAttr() == clause.variables[1]);
-                        }
+                    }
 
-                        if (satisfies)
-                        {
-                            filteredResults.Add(result);
-                        }
+                    if (allSatisfied)
+                    {
+                        var resultLine = string.Join(" ", selectedVariables.Select(v => tuple[v]));
+                        validTuples.Add(resultLine);
+                    }
+                }
+
+                return validTuples.Any() ? string.Join(", ", validTuples) : "none";
+            }
+
+            // zwykle
+            string selectedVariable = selectedVariables[0];
+            if (!possibleBindings.ContainsKey(selectedVariable))
+                return "none";
+
+            var resultSet = possibleBindings[selectedVariable];
+
+            foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
+            {
+                string left = clause.variables[0];
+                string right = clause.variables[1];
+
+                var leftIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == left);
+                var rightIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == right);
+
+                var leftVals = leftIsVar
+                    ? GetValuesForVariable(left, declarations, pkb, valueCache)
+                    : new List<string> { left };
+
+                var rightVals = rightIsVar
+                    ? GetValuesForVariable(right, declarations, pkb, valueCache)
+                    : new List<string> { right };
+
+                if (left == selectedVariable)
+                {
+                    resultSet = resultSet
+                        .Where(l => rightVals.Any(r => ClauseSatisfied(clause, l, r, pkb)))
+                        .ToList();
+                }
+                else if (right == selectedVariable)
+                {
+                    resultSet = resultSet
+                        .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
+                        .ToList();
+                }
+            }
+
+            return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "none";
+        }
+
+
+        private static Dictionary<string, List<string>> GetBindings(List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
+        {
+            var bindings = new Dictionary<string, List<string>>();
+
+            foreach (var decl in declarations)
+            {
+                foreach (var variable in decl.variables)
+                {
+                    if (variable.Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bindings[variable] = new List<string> { "true" };
+                    }
+                    else
+                    {
+                        var vals = GetValuesForDeclarationType(decl.type, pkb);
+                        bindings[variable] = vals;
+                        cache[variable] = vals;
                     }
                 }
             }
 
-            return filteredResults;
+            return bindings;
         }
 
-        private static List<string> FilterByWith(List<string> currentResults, WithNode with, PKB pkb)
-        {
-            List<string> filteredResults = new();
+        //private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
+        //{
+        //    if (int.TryParse(var, out _) || (var.StartsWith("\"") && var.EndsWith("\"")))
+        //        return new List<string> { var };
 
-            foreach (var result in currentResults)
+        //    if (cache.ContainsKey(var))
+        //        return cache[var];
+
+        //    var declType = declarations.FirstOrDefault(d => d.variables.Contains(var))?.type;
+        //    if (declType == null)
+        //        return new List<string>();
+
+        //    var vals = GetValuesForDeclarationType(declType, pkb);
+        //    cache[var] = vals;
+        //    return vals;
+        //}
+
+        //private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
+        //{
+        //    if (int.TryParse(var, out _))
+        //        return new List<string> { var };
+
+        //    if (var.StartsWith("\"") && var.EndsWith("\""))
+        //        return new List<string> { var.Trim('"') };
+
+        //    if (cache.ContainsKey(var))
+        //        return cache[var];
+
+        //    var declType = declarations.FirstOrDefault(d => d.variables.Contains(var))?.type;
+        //    if (declType == null)
+        //        return new List<string>();
+
+        //    var vals = GetValuesForDeclarationType(declType, pkb);
+        //    cache[var] = vals;
+        //    return vals;
+        //}
+
+        private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
+        {
+            var trimmedVar = var.Trim();
+            //Console.WriteLine(var);
+
+            if (int.TryParse(trimmedVar, out _))
+                return new List<string> { trimmedVar };
+
+            if (trimmedVar.StartsWith("\"") && trimmedVar.EndsWith("\""))
+                return new List<string> { trimmedVar.Trim('"') };
+
+            //if (declarations.SelectMany(d => d.variables).Any(v => v.Trim() == trimmedVar))
+            //{
+            //    if (cache.ContainsKey(trimmedVar))
+            //        return cache[trimmedVar];
+            //}
+
+            var declType = declarations
+                .FirstOrDefault(d => d.variables.Any(v => v.Trim() == trimmedVar))
+                ?.type;
+
+            if (declType == null)
+                return new List<string>();
+
+            var vals = GetValuesForDeclarationType(declType, pkb);
+            cache[trimmedVar] = vals;
+
+            //Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
+            return vals;
+        }
+
+
+        private static List<string> GetValuesForDeclarationType(string declType, PKBClass pkb)
+        {
+            return declType switch
             {
-                if (with.variables.Contains(result))
+                "stmt" or "prog_line" => pkb.GetStatements().Select(x => x.ToString()).ToList(),
+                "assign" => pkb.GetAssignStmts().Select(x => x.ToString()).ToList(),
+                "while" => pkb.GetWhileStmts().Select(x => x.ToString()).ToList(),
+                "if" => pkb.GetIfStmts().Select(x => x.ToString()).ToList(),
+                "variable" => pkb.GetVariables(),
+                "constant" => pkb.GetConstants(),
+                "procedure" => pkb.GetProcedures(),
+                _ => new List<string>()
+            };
+        }
+
+        private static bool ClauseSatisfied(ClauseNode clause, string leftVal, string rightVal, PKBClass pkb)
+        {
+            string rel = clause.relation.ToLower();
+            string l = leftVal.Trim('"');
+            string r = rightVal.Trim('"');
+
+            bool IsInt(string s) => int.TryParse(s, out _);
+            int li = IsInt(l) ? int.Parse(l) : -1;
+            int ri = IsInt(r) ? int.Parse(r) : -1;
+
+            //console.writeline($"checking clause: {clause.relation}({leftval}, {rightval})");
+
+
+            return rel switch
+            {
+                "modifies" => IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r),
+                "uses" => IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
+                "parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
+                "parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
+                "follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
+                "follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
+                "calls" => pkb.Calls(l, r),
+                "calls*" => pkb.CallsStar(l, r),
+                _ => false
+            };
+        }
+
+        //sortowanie po koszciw
+        private static int EstimateClauseCost(ClauseNode clause, Dictionary<string, List<string>> cache)
+        {
+            int leftSize = cache.ContainsKey(clause.variables[0]) ? cache[clause.variables[0]].Count : 1000;
+            int rightSize = cache.ContainsKey(clause.variables[1]) ? cache[clause.variables[1]].Count : 1000;
+            return leftSize * rightSize; //liczba kombinacji - im wiecej tym mniej oplacalne sprawdzanie
+        }
+
+        private static List<Dictionary<string, string>> GenerateCombinations(Dictionary<string, List<string>> variableValues)
+        {
+            var result = new List<Dictionary<string, string>>();
+
+            void Recurse(Dictionary<string, string> current, List<string> keysLeft)
+            {
+                if (!keysLeft.Any())
                 {
-                    filteredResults.Add(result);
+                    result.Add(new Dictionary<string, string>(current));
+                    return;
+                }
+
+                var key = keysLeft[0];
+                foreach (var val in variableValues[key])
+                {
+                    current[key] = val;
+                    Recurse(current, keysLeft.Skip(1).ToList());
                 }
             }
 
-            return filteredResults;
+            Recurse(new Dictionary<string, string>(), variableValues.Keys.ToList());
+            return result;
         }
+
+
     }
 }
