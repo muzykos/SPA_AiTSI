@@ -9,6 +9,12 @@ class Program
 {
     static void Main(String[] args)
     {
+        //moje
+        //string projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
+        //string filePath = Path.Combine(projectPath, "kod_simple.txt");
+        //string source = File.ReadAllText(filePath);
+
+        //stare
         //string projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
         string filePath = Path.Combine("kod_simple.txt");
         string source = File.ReadAllText(filePath);
@@ -56,6 +62,10 @@ class Program
                 {
                     Console.WriteLine("# Błąd: " + e.Message);
                 }
+
+
+
+
             }
         }
         catch (Exception ex)

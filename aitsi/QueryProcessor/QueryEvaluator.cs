@@ -10,7 +10,7 @@ namespace aitsi
         //{
         //    var selectNode = tree.getChildByType("Select") as SelectNode;
         //    if (selectNode == null)
-        //        throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
+        //        throw new Exception("Brak wï¿½zï¿½a SELECT w drzewie zapytania.");
 
         //    var declarations = tree.children.OfType<DeclarationNode>().ToList();
         //    var clauses = selectNode.children.OfType<ClauseNode>().ToList();
@@ -52,7 +52,7 @@ namespace aitsi
         //    }
 
         //    if (!possibleBindings.ContainsKey(selectedVariable))
-        //        return "brak wyników";
+        //        return "brak wynikï¿½w";
 
         //    var resultSet = possibleBindings[selectedVariable];
 
@@ -94,14 +94,14 @@ namespace aitsi
         //        }
         //    }
 
-        //    return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wyników";
+        //    return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wynikï¿½w";
         //}
 
         public static string Evaluate(QueryNode tree, PKBClass pkb)
         {
             var selectNode = tree.getChildByType("Select") as SelectNode;
             if (selectNode == null)
-                throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
+                throw new Exception("Brak wï¿½zï¿½a SELECT w drzewie zapytania.");
 
             var declarations = tree.children.OfType<DeclarationNode>().ToList();
             var clauses = selectNode.children.OfType<ClauseNode>().ToList();
@@ -378,37 +378,37 @@ namespace aitsi
                     if (leftIsUnderscore || rightIsUnderscore)
                         return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
 
-                    return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
+                    return pkb.Follows(li, ri);
 
                 case "follows*":
                     if (leftIsUnderscore || rightIsUnderscore)
                         return pkb.GetFollowsStar(li).Count > 0 || pkb.GetFollowedByStar(ri).Count > 0;
 
-                    return IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri);
+                    return pkb.FollowsStar(li, ri);
 
                 case "parent":
                     if (leftIsUnderscore || rightIsUnderscore)
                         return pkb.Parent(li, ri) || pkb.GetChildren(li).Count > 0 || pkb.GetParent(ri) != -1;
 
-                    return IsInt(l) && IsInt(r) && pkb.Parent(li, ri);
+                    return pkb.Parent(li, ri);
 
                 case "parent*":
                     if (leftIsUnderscore || rightIsUnderscore)
                         return pkb.ParentStar(li, ri) || pkb.GetChildrenStar(li).Count > 0 || pkb.GetParentStar(ri).Count > 0;
 
-                    return IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri);
+                    return pkb.ParentStar(li, ri);
 
                 default:
                     return false;
 
-                    //    "uses" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyUses(l, r) : IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
-                    //"parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
-                    //"parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
-                    //"follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
-                    //"follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
-                    //"calls" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCalls(l, r) : pkb.Calls(l, r),
-                    //"calls*" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCallsStar(l, r) : pkb.CallsStar(l, r),
-                    //_ => false
+                //    "uses" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyUses(l, r) : IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
+                //"parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
+                //"parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
+                //"follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
+                //"follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
+                //"calls" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCalls(l, r) : pkb.Calls(l, r),
+                //"calls*" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCallsStar(l, r) : pkb.CallsStar(l, r),
+                //_ => false
             }
         }
 
