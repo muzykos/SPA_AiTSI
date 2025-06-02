@@ -270,7 +270,11 @@ namespace aitsi
         private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
         {
             var trimmedVar = var.Trim();
-            //Console.WriteLine(var);
+
+            if (trimmedVar == "_")
+            {
+                return new List<string>();
+            }
 
             if (int.TryParse(trimmedVar, out _))
                 return new List<string> { trimmedVar };
@@ -321,13 +325,16 @@ namespace aitsi
             string r = rightVal.Trim('"');
 
             bool IsInt(string s) => int.TryParse(s, out _);
+            bool leftIsUnderscore = l == "_";
+            bool rightIsUnderscore = r == "_";
+
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
 
             //console.writeline($"checking clause: {clause.relation}({leftval}, {rightval})");
 
 
-            return rel switch
+            switch (rel)
             {
                 case "modifies":
                     if (leftIsUnderscore && !rightIsUnderscore)
