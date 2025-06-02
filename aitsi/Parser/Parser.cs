@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace aitsi.Parser
 {
     class Parser
@@ -6,6 +8,7 @@ namespace aitsi.Parser
         private TNode currentNode;
         private AST ast;
         private int stmtNumber = 1;
+        private int debug = 0;
 
         public Parser(Lexer lexer, AST ast)
         {
@@ -16,7 +19,10 @@ namespace aitsi.Parser
 
         private void parse(TType type)
         {
-            Console.WriteLine($"Token: {currentNode.getType()} '{currentNode.getAttr()}'");
+            if (debug == 1)
+            {
+                Console.WriteLine($"Token: {currentNode.getType()} '{currentNode.getAttr()}'");
+            }
             if (currentNode.getType() == type)
                 currentNode = lexer.getNextNode();
             else

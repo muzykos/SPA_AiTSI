@@ -32,6 +32,11 @@ namespace aitsi.Parser
             this.type = type;
         }
 
+        public void setStmtNumber(int stmtNumber)
+        {
+            this.stmtNumber = stmtNumber;
+        }
+
         public TType getType()
         {
             return this.type;
@@ -75,6 +80,11 @@ namespace aitsi.Parser
         public TNode? getParent()
         {
             return parentNode;
+        }
+
+        internal int getStmtNumber()
+        {
+            return this.stmtNumber;
         }
     }
 }

@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\aitsi",
+    "\\aitsi\\QueryProcessor"
   ],
-  "SelectedNode": "\\aitsi.sln",
   "PreviewInSolutionExplorer": false
 }

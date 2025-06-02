@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace aitsi.PKB
 {
-     class PKB
+    public class PKB
     {
         private AST ast;
 
@@ -19,15 +19,15 @@ namespace aitsi.PKB
         private Dictionary<string, List<int>> ifStmts = new();
         private Dictionary<string, List<int>> callStmts = new();
 
-        private Dictionary<string, List<string>> modifies = new(); 
+        private Dictionary<string, List<string>> modifies = new();
         private Dictionary<int, List<string>> modifiesStmt = new();
-        private Dictionary<string, List<string>> uses = new(); 
+        private Dictionary<string, List<string>> uses = new();
         private Dictionary<int, List<string>> usesStmt = new();
-        private Dictionary<int, int> follows = new(); 
+        private Dictionary<int, int> follows = new();
         private Dictionary<int, HashSet<int>> followsStar = new();
-        private Dictionary<int, int> parent = new(); 
+        private Dictionary<int, int> parent = new();
         private Dictionary<int, HashSet<int>> parentStar = new();
-        private Dictionary<string, List<string>> calls = new(); 
+        private Dictionary<string, List<string>> calls = new();
         private Dictionary<string, HashSet<string>> callsStar = new();
         private int stmtCounter = 1;
 
@@ -40,7 +40,7 @@ namespace aitsi.PKB
 
         public void printInfo()
         {
-            Console.WriteLine("procedures "+ procedures.Count);
+            Console.WriteLine("procedures " + procedures.Count);
             Console.WriteLine("variables " + variables.Count);
             Console.WriteLine("constants " + constants.Count);
             Console.WriteLine("assignStmts " + assignStmts.Count);
@@ -86,31 +86,31 @@ namespace aitsi.PKB
                 if (!calls.ContainsKey(procName))
                     calls[procName] = new List<string>();
 
-                
+
                 ProcessStatements(procNode, procName);
             }
 
-            
+
             BuildFollowsStar();
             BuildParentStar();
             BuildCallsStar();
         }
 
-        
+
         private void ProcessStatements(TNode procNode, string procName)
         {
             foreach (TNode stmtNode in procNode.getChildren())
             {
-                ProcessStatement(stmtNode, procName, -1); 
+                ProcessStatement(stmtNode, procName, -1);
             }
         }
 
-        
+
         private void ProcessStatement(TNode stmtNode, string procName, int parentStmt)
         {
             if (stmtNode.getType() == TType.Else)
             {
-        
+
                 foreach (TNode childStmt in stmtNode.getChildren())
                 {
                     ProcessStatement(childStmt, procName, parentStmt);
@@ -119,9 +119,7 @@ namespace aitsi.PKB
             }
 
 
-            int number = 1;
-            int stmtNum = number++;
-            //     int stmtNum = stmtCounter++;
+                 int stmtNum = stmtCounter++;
 
             statements[stmtNum] = stmtNode;
             procToStmts[procName].Add(stmtNum);
@@ -132,9 +130,9 @@ namespace aitsi.PKB
             }
 
             TNode? followsNode = stmtNode.getFollows();
-            if (followsNode != null && int.TryParse(followsNode.getAttr(), out int followsStmt))
+            if (followsNode != null)
             {
-                follows[stmtNum] = followsStmt;
+                follows[stmtNum] = followsNode.getStmtNumber();
             }
 
             switch (stmtNode.getType())

@@ -162,13 +162,13 @@ namespace aitsi
                     }
                 }
 
-                return validTuples.Any() ? string.Join(", ", validTuples) : "brak wyników";
+                return validTuples.Any() ? string.Join(", ", validTuples) : "none";
             }
 
             // zwykle
             string selectedVariable = selectedVariables[0];
             if (!possibleBindings.ContainsKey(selectedVariable))
-                return "brak wyników";
+                return "none";
 
             var resultSet = possibleBindings[selectedVariable];
 
@@ -202,7 +202,7 @@ namespace aitsi
                 }
             }
 
-            return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wyników";
+            return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "none";
         }
 
 
@@ -270,7 +270,11 @@ namespace aitsi
         private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
         {
             var trimmedVar = var.Trim();
-            Console.WriteLine(var);
+
+            if (trimmedVar == "_")
+            {
+                return new List<string>();
+            }
 
             if (int.TryParse(trimmedVar, out _))
                 return new List<string> { trimmedVar };
@@ -294,7 +298,7 @@ namespace aitsi
             var vals = GetValuesForDeclarationType(declType, pkb);
             cache[trimmedVar] = vals;
 
-            Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
+            //Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
             return vals;
         }
 
@@ -321,24 +325,91 @@ namespace aitsi
             string r = rightVal.Trim('"');
 
             bool IsInt(string s) => int.TryParse(s, out _);
+            bool leftIsUnderscore = l == "_";
+            bool rightIsUnderscore = r == "_";
+
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
 
-            Console.WriteLine($"Checking clause: {clause.relation}({leftVal}, {rightVal})");
+            //console.writeline($"checking clause: {clause.relation}({leftval}, {rightval})");
 
 
-            return rel switch
+            switch (rel)
             {
-                "modifies" => IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r),
-                "uses" => IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
-                "parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
-                "parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
-                "follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
-                "follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
-                "calls" => pkb.Calls(l, r),
-                "calls*" => pkb.CallsStar(l, r),
-                _ => false
-            };
+                case "modifies":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtModifies(r).Count > 0 || pkb.GetProcModifies(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetModifiesStmt(li).Count > 0 : pkb.GetModifiesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r);
+
+                case "uses":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtUses(r).Count > 0 || pkb.GetProcUses(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetUsesStmt(li).Count > 0 : pkb.GetUsesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r);
+
+
+                case "calls":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledBy(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCalls(l).Count > 0;
+
+                    return pkb.Calls(l, r);
+
+                case "calls*":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledByStar(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCallsStar(l).Count > 0;
+
+                    return pkb.CallsStar(l, r);
+
+
+                case "follows":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+
+                    return pkb.Follows(li, ri);
+
+                case "follows*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollowsStar(li).Count > 0 || pkb.GetFollowedByStar(ri).Count > 0;
+
+                    return pkb.FollowsStar(li, ri);
+
+                case "parent":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.Parent(li, ri) || pkb.GetChildren(li).Count > 0 || pkb.GetParent(ri) != -1;
+
+                    return pkb.Parent(li, ri);
+
+                case "parent*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.ParentStar(li, ri) || pkb.GetChildrenStar(li).Count > 0 || pkb.GetParentStar(ri).Count > 0;
+
+                    return pkb.ParentStar(li, ri);
+
+                default:
+                    return false;
+
+                //    "uses" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyUses(l, r) : IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
+                //"parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
+                //"parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
+                //"follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
+                //"follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
+                //"calls" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCalls(l, r) : pkb.Calls(l, r),
+                //"calls*" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCallsStar(l, r) : pkb.CallsStar(l, r),
+                //_ => false
+            }
         }
 
         //sortowanie po koszciw

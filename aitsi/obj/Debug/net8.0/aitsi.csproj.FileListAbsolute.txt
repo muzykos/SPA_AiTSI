@@ -13,6 +13,11 @@ C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\refint\aits
 C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.pdb
 C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\aitsi.genruntimeconfig.cache
 C:\Users\savan\Source\Repos\muzykos\SPA_AiTSI\aitsi\obj\Debug\net8.0\ref\aitsi.dll
+C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.exe
+C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.deps.json
+C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.runtimeconfig.json
+C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.dll
+C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.pdb
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.AssemblyInfoInputs.cache
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.AssemblyInfo.cs
@@ -21,10 +26,5 @@ C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.sourcelink.jso
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.dll
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\refint\aitsi.dll
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.pdb
-C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.exe
-C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.deps.json
-C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.runtimeconfig.json
-C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.dll
-C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\bin\Debug\net8.0\aitsi.pdb
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\aitsi.genruntimeconfig.cache
 C:\Users\alexw\OneDrive\Pulpit\AiTSI\aitsi\obj\Debug\net8.0\ref\aitsi.dll

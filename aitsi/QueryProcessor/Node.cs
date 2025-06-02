@@ -53,7 +53,7 @@ public class DeclarationNode : Node
         this.name = $"Declaration: {type} ({string.Join(", ", variables)})";
         this.type = type;
         this.variables = variables;
-    //    this.type = "Declaration";
+        //    this.type = "Declaration";
     }
 }
 
@@ -61,9 +61,8 @@ public class SelectNode : Node
 {
     public SelectNode(string variable)
     {
-        this.name = $"Select: {variable}";
-        this.variables.Add(variable);
-        this.type = "Select"; 
+        this.name = $"Select: ({variable})";
+        this.type = "Select";
     }
 }
 
@@ -85,5 +84,19 @@ public class WithNode : Node
         this.name = $"With:({left}, {right})";
         this.variables.Add(left);
         this.variables.Add(right);
+    }
+}
+
+public class PatternNode : Node
+{
+    public PatternNode(string assignVal, string left, string right, string arg3, string matchType)
+    {
+        this.name = $"Pattern: {assignVal}({left}, {matchType}:{right}{(arg3 != null ? ", " + arg3 : "")}))";
+        this.type = matchType;
+        this.variables.Add(assignVal);
+        this.variables.Add(left);
+        this.variables.Add(right);
+        if (arg3 != null)
+            this.variables.Add(arg3);
     }
 }
