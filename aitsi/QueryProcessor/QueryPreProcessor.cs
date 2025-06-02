@@ -303,7 +303,7 @@ namespace aitsi
                             }
                             if (remainingPart.Length == prevLength)
                             {
-                                Console.WriteLine("❌ Nieparsowalna część: " + remainingPart);
+                                Console.WriteLine("# Nieparsowalna część: " + remainingPart);
                                 break;
                             }
                         }

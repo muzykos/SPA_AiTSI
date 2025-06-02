@@ -329,16 +329,80 @@ namespace aitsi
 
             return rel switch
             {
-                "modifies" => IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r),
-                "uses" => IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
-                "parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
-                "parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
-                "follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
-                "follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
-                "calls" => pkb.Calls(l, r),
-                "calls*" => pkb.CallsStar(l, r),
-                _ => false
-            };
+                case "modifies":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtModifies(r).Count > 0 || pkb.GetProcModifies(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetModifiesStmt(li).Count > 0 : pkb.GetModifiesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r);
+
+                case "uses":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtUses(r).Count > 0 || pkb.GetProcUses(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetUsesStmt(li).Count > 0 : pkb.GetUsesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r);
+
+
+                case "calls":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledBy(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCalls(l).Count > 0;
+
+                    return pkb.Calls(l, r);
+
+                case "calls*":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledByStar(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCallsStar(l).Count > 0;
+
+                    return pkb.CallsStar(l, r);
+
+
+                case "follows":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+
+                    return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
+
+                case "follows*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollowsStar(li).Count > 0 || pkb.GetFollowedByStar(ri).Count > 0;
+
+                    return IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri);
+
+                case "parent":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.Parent(li, ri) || pkb.GetChildren(li).Count > 0 || pkb.GetParent(ri) != -1;
+
+                    return IsInt(l) && IsInt(r) && pkb.Parent(li, ri);
+
+                case "parent*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.ParentStar(li, ri) || pkb.GetChildrenStar(li).Count > 0 || pkb.GetParentStar(ri).Count > 0;
+
+                    return IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri);
+
+                default:
+                    return false;
+
+                    //    "uses" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyUses(l, r) : IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
+                    //"parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
+                    //"parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
+                    //"follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
+                    //"follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
+                    //"calls" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCalls(l, r) : pkb.Calls(l, r),
+                    //"calls*" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCallsStar(l, r) : pkb.CallsStar(l, r),
+                    //_ => false
+            }
         }
 
         //sortowanie po koszciw
