@@ -15,7 +15,7 @@ class Program
         //string source = File.ReadAllText(filePath);
 
         //stare
-        string projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
+        //string projectPath = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
         string filePath = Path.Combine("kod_simple.txt");
         string source = File.ReadAllText(filePath);
 
