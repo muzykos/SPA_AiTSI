@@ -30,6 +30,8 @@ namespace aitsi.PKB
         private Dictionary<string, List<string>> calls = new();
         private Dictionary<string, HashSet<string>> callsStar = new();
         private int stmtCounter = 1;
+        private Dictionary<int, HashSet<int>> next = new();
+        private Dictionary<int, HashSet<int>> nextStar = new();
 
         private Dictionary<string, List<int>> procToStmts = new();
 
@@ -94,6 +96,8 @@ namespace aitsi.PKB
             BuildFollowsStar();
             BuildParentStar();
             BuildCallsStar();
+            BuildNext();
+            BuildNextStar();
         }
 
 
@@ -396,6 +400,191 @@ namespace aitsi.PKB
             } while (changed);
         }
 
+        private void BuildNext()
+        {
+            foreach (string procName in procedures)
+            {
+                List<int> procStmts = procToStmts[procName];
+                if (procStmts.Count == 0) continue;
+
+                BuildNextForProcedure(procStmts);
+            }
+        }
+
+        private void BuildNextForProcedure(List<int> procStmts)
+        {
+            var sortedStmts = procStmts.OrderBy(s => s).ToList();
+
+            for (int i = 0; i < sortedStmts.Count; i++)
+            {
+                int currentStmt = sortedStmts[i];
+                TNode currentNode = statements[currentStmt];
+
+                BuildNextForStatement(currentStmt, currentNode, procStmts);
+            }
+        }
+
+        private void BuildNextForStatement(int stmtNum, TNode stmtNode, List<int> procStmts)
+        {
+            if (!next.ContainsKey(stmtNum))
+                next[stmtNum] = new HashSet<int>();
+
+            switch (stmtNode.getType())
+            {
+                case TType.Assign:
+                case TType.Call:
+
+                    AddDirectNext(stmtNum, procStmts);
+                    break;
+
+                case TType.While:
+
+                    BuildNextForWhile(stmtNum, stmtNode, procStmts);
+                    break;
+
+                case TType.If:
+
+                    BuildNextForIf(stmtNum, stmtNode, procStmts);
+                    break;
+            }
+        }
+
+        private void AddDirectNext(int stmtNum, List<int> procStmts)
+        {
+            if (follows.ContainsKey(stmtNum))
+            {
+                next[stmtNum].Add(follows[stmtNum]);
+            }
+            else
+            {
+                int parentStmt = GetParent(stmtNum);
+                if (parentStmt != -1)
+                {
+                    TNode parentNode = statements[parentStmt];
+
+                    if (parentNode.getType() == TType.While)
+                    {
+                        next[stmtNum].Add(parentStmt);
+                    }
+                    else if (parentNode.getType() == TType.If)
+                    {
+                        if (follows.ContainsKey(parentStmt))
+                        {
+                            next[stmtNum].Add(follows[parentStmt]);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void BuildNextForWhile(int whileStmt, TNode whileNode, List<int> procStmts)
+        {
+            var loopChildren = GetChildren(whileStmt);
+
+            if (loopChildren.Count > 0)
+            {
+                int firstInLoop = loopChildren.OrderBy(s => s).First();
+                next[whileStmt].Add(firstInLoop);
+            }
+
+            if (follows.ContainsKey(whileStmt))
+            {
+                next[whileStmt].Add(follows[whileStmt]);
+            }
+        }
+
+        private void BuildNextForIf(int ifStmt, TNode ifNode, List<int> procStmts)
+        {
+            var ifChildren = new List<int>();
+            var elseChildren = new List<int>();
+
+            foreach (TNode child in ifNode.getChildren())
+            {
+                if (child.getType() == TType.Else)
+                {
+                    foreach (TNode elseChild in child.getChildren())
+                    {
+                        if (statements.ContainsValue(elseChild))
+                        {
+                            int elseStmtNum = statements.FirstOrDefault(kvp => kvp.Value == elseChild).Key;
+                            if (elseStmtNum != 0)
+                                elseChildren.Add(elseStmtNum);
+                        }
+                    }
+                }
+                else
+                {
+                    if (statements.ContainsValue(child))
+                    {
+                        int childStmtNum = statements.FirstOrDefault(kvp => kvp.Value == child).Key;
+                        if (childStmtNum != 0)
+                            ifChildren.Add(childStmtNum);
+                    }
+                }
+            }
+
+            if (ifChildren.Count > 0)
+            {
+                int firstInThen = ifChildren.OrderBy(s => s).First();
+                next[ifStmt].Add(firstInThen);
+            }
+
+            if (elseChildren.Count > 0)
+            {
+                int firstInElse = elseChildren.OrderBy(s => s).First();
+                next[ifStmt].Add(firstInElse);
+            }
+
+            if (elseChildren.Count == 0 && follows.ContainsKey(ifStmt))
+            {
+                next[ifStmt].Add(follows[ifStmt]);
+            }
+        }
+
+        private void BuildNextStar()
+        {
+            foreach (var pair in next)
+            {
+                int n1 = pair.Key;
+                HashSet<int> directNext = pair.Value;
+
+                if (!nextStar.ContainsKey(n1))
+                    nextStar[n1] = new HashSet<int>();
+
+                foreach (int n2 in directNext)
+                {
+                    nextStar[n1].Add(n2);
+                }
+            }
+
+            bool changed;
+            do
+            {
+                changed = false;
+
+                foreach (var pair in nextStar.ToList())
+                {
+                    int n1 = pair.Key;
+                    HashSet<int> n1Next = pair.Value;
+                    int initialCount = n1Next.Count;
+
+                    foreach (int n2 in n1Next.ToList())
+                    {
+                        if (nextStar.ContainsKey(n2))
+                        {
+                            foreach (int n3 in nextStar[n2])
+                            {
+                                n1Next.Add(n3);
+                            }
+                        }
+                    }
+
+                    if (n1Next.Count > initialCount)
+                        changed = true;
+                }
+            } while (changed);
+        }
+
         /* PKB Query Methods */
 
         public List<string> GetProcedures()
@@ -570,6 +759,30 @@ namespace aitsi.PKB
             return callsStar.Where(pair => pair.Value.Contains(procedure))
                            .Select(pair => pair.Key)
                            .ToList();
+        }
+
+        public List<int> GetNext(int stmtNum)
+        {
+            return next.ContainsKey(stmtNum) ? next[stmtNum].ToList() : new List<int>();
+        }
+
+        public List<int> GetPrevious(int stmtNum)
+        {
+            return next.Where(pair => pair.Value.Contains(stmtNum))
+                      .Select(pair => pair.Key)
+                      .ToList();
+        }
+
+        public List<int> GetNextStar(int stmtNum)
+        {
+            return nextStar.ContainsKey(stmtNum) ? nextStar[stmtNum].ToList() : new List<int>();
+        }
+
+        public List<int> GetPreviousStar(int stmtNum)
+        {
+            return nextStar.Where(pair => pair.Value.Contains(stmtNum))
+                          .Select(pair => pair.Key)
+                          .ToList();
         }
 
         public bool ProcModifies(string procedure, string variable)
