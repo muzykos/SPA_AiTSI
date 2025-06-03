@@ -1,4 +1,5 @@
 using aitsi.Parser;
+using System;
 using ParserTNode = aitsi.Parser.TNode;
 using PKBClass = aitsi.PKB.PKB;
 
@@ -6,115 +7,73 @@ namespace aitsi
 {
     static class Evaluator
     {
-        //public static string Evaluate(QueryNode tree, PKBClass pkb)
-        //{
-        //    var selectNode = tree.getChildByType("Select") as SelectNode;
-        //    if (selectNode == null)
-        //        throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
-
-        //    var declarations = tree.children.OfType<DeclarationNode>().ToList();
-        //    var clauses = selectNode.children.OfType<ClauseNode>().ToList();
-        //    var withs = selectNode.children.OfType<WithNode>().ToList();
-
-        //    string selectedVariable = selectNode.variables[0];
-        //    Dictionary<string, List<string>> valueCache = new();
-        //    Dictionary<string, List<string>> possibleBindings = GetBindings(declarations, pkb, valueCache);
-
-        //    // najpierw boolean bo jak cos znajduje to mozna zakonczyc 
-        //    if (selectedVariable.Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
-        //    {
-        //        if (clauses.Count == 0) return "true";
-
-        //        foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
-        //        {
-        //            var leftVals = GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache);
-        //            var rightVals = GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache);
-
-        //            Console.WriteLine($"variables: {clause.variables[1]}, {clause.variables[0]}");
-
-        //        //    Console.WriteLine("wariable ", clause.variables[0], " ", clause.variables[1]);
-
-        //            foreach (var l in leftVals)
-        //            {
-        //                foreach (var r in rightVals)
-        //                {
-        //                    Console.WriteLine($"Checking clause: {clause.relation}({r}, {l})");
-        //                    if (ClauseSatisfied(clause, l, r, pkb))
-        //                    {
-        //                        Console.WriteLine("Clause satisfied!");
-        //                        return "true";
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        Console.WriteLine("twoja stara");
-        //        return "false";
-        //    }
-
-        //    if (!possibleBindings.ContainsKey(selectedVariable))
-        //        return "brak wyników";
-
-        //    var resultSet = possibleBindings[selectedVariable];
-
-        //    foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
-        //    {
-        //        string left = clause.variables[0];
-        //        string right = clause.variables[1];
-
-        //        //var leftVals = GetValuesForVariable(left, declarations, pkb, valueCache);
-        //        //var rightVals = GetValuesForVariable(right, declarations, pkb, valueCache);
-
-        //        //var leftIsVar = declarations.Any(d => d.variables.Contains(clause.variables[0]));
-        //        //var rightIsVar = declarations.Any(d => d.variables.Contains(clause.variables[1]));
-
-        //        var leftIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == left);
-        //        var rightIsVar = declarations.SelectMany(d => d.variables).Any(v => v.Trim() == right);
-
-
-        //        var leftVals = leftIsVar
-        //            ? GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache)
-        //            : new List<string> { clause.variables[0] };
-
-        //        var rightVals = rightIsVar
-        //            ? GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache)
-        //            : new List<string> { clause.variables[1] };
-
-
-        //        if (left == selectedVariable)
-        //        {
-        //            resultSet = resultSet
-        //                .Where(l => rightVals.Any(r => ClauseSatisfied(clause, l, r, pkb)))
-        //                .ToList();
-        //        }
-        //        else if (right == selectedVariable)
-        //        {
-        //            resultSet = resultSet
-        //                .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
-        //                .ToList();
-        //        }
-        //    }
-
-        //    return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "brak wyników";
-        //}
-
         public static string Evaluate(QueryNode tree, PKBClass pkb)
         {
             var selectNode = tree.getChildByType("Select") as SelectNode;
             if (selectNode == null)
-                throw new Exception("Brak wêz³a SELECT w drzewie zapytania.");
+                throw new Exception("Brak wÄ™zÅ‚a SELECT w drzewie zapytania.");
 
             var declarations = tree.children.OfType<DeclarationNode>().ToList();
             var clauses = selectNode.children.OfType<ClauseNode>().ToList();
             var withs = selectNode.children.OfType<WithNode>().ToList();
+            var patterns = selectNode.children.OfType<PatternNode>().ToList();
 
             var selectedVariables = selectNode.variables;
             Dictionary<string, List<string>> valueCache = new();
             Dictionary<string, List<string>> possibleBindings = GetBindings(declarations, pkb, valueCache);
 
+            var withVars = withs
+                .SelectMany(w => w.variables)
+                .Select(v => v.Contains('.') ? v.Split('.')[0] : v)
+                .Distinct()
+                .Where(v => possibleBindings.ContainsKey(v))
+                .ToList();
+
+            if (withVars.Count > 0)
+            {
+                var combos = GenerateCombinations(
+                    withVars.ToDictionary(v => v, v => possibleBindings[v])
+                );
+
+                var validCombos = combos
+                    .Where(c => withs.All(w => WithSatisfied(w, c)))
+                    .ToList();
+
+                foreach (var var in withVars)
+                {
+                    //Console.WriteLine(var);
+                    //Console.WriteLine("w czyszczeniu");
+                    var newVals = validCombos
+                        .Where(c => c.ContainsKey(var))
+                        .Select(c => c[var])
+                        .Distinct()
+                        .ToList();
+
+                    possibleBindings[var] = newVals;
+                    //foreach (var p in possibleBindings)
+                    //{
+                    //    Console.WriteLine($"{p.Key} = [{string.Join(", ", p.Value)}]");
+                    //}
+
+                    valueCache[var] = newVals;
+                }
+            }
+
             // BOOLEAN
             if (selectedVariables.Count == 1 && selectedVariables[0].Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
             {
-                if (clauses.Count == 0) return "true";
+                if (clauses.Count == 0 && withs.Count == 0) return "true";
+
+
+                foreach (var pattern in patterns)
+                {
+                    var stmt = pattern.variables[0];
+                    var stmtVals = GetValuesForVariable(stmt, declarations, pkb, valueCache);
+
+                    bool matched = stmtVals.Any(s => PatternSatisfied(pattern, s, pkb));
+                    if (!matched) return "false";
+                }
+
 
                 foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
                 {
@@ -122,9 +81,13 @@ namespace aitsi
                     var rightVals = GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache);
 
                     foreach (var l in leftVals)
+                    {
                         foreach (var r in rightVals)
+                        {
                             if (ClauseSatisfied(clause, l, r, pkb))
                                 return "true";
+                        }
+                    }
                 }
                 return "false";
             }
@@ -136,12 +99,21 @@ namespace aitsi
                     .ToDictionary(var => var, var => GetValuesForVariable(var, declarations, pkb, valueCache));
 
                 var cartesianProduct = GenerateCombinations(valueSets);
-
                 var validTuples = new List<string>();
 
                 foreach (var tuple in cartesianProduct)
                 {
                     bool allSatisfied = true;
+
+                    foreach (var pattern in patterns)
+                    {
+                        var stmt = tuple.ContainsKey(pattern.variables[0]) ? tuple[pattern.variables[0]] : pattern.variables[0];
+                        if (!PatternSatisfied(pattern, stmt, pkb))
+                        {
+                            allSatisfied = false;
+                            break;
+                        }
+                    }
 
                     foreach (var clause in clauses)
                     {
@@ -171,6 +143,12 @@ namespace aitsi
                 return "none";
 
             var resultSet = possibleBindings[selectedVariable];
+            resultSet = resultSet
+                .Where(val => patterns.All(p => PatternSatisfied(p, val, pkb)))
+                .ToList();
+
+            if (!resultSet.Any())
+                return "none";
 
             foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
             {
@@ -200,11 +178,17 @@ namespace aitsi
                         .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
                         .ToList();
                 }
+                else
+                {
+                }
+
+                if (!resultSet.Any())
+                    return "none";
             }
 
             return resultSet.Any() ? string.Join(", ", resultSet.Distinct()) : "none";
-        }
 
+        }
 
         private static Dictionary<string, List<string>> GetBindings(List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
         {
@@ -230,71 +214,25 @@ namespace aitsi
             return bindings;
         }
 
-        //private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
-        //{
-        //    if (int.TryParse(var, out _) || (var.StartsWith("\"") && var.EndsWith("\"")))
-        //        return new List<string> { var };
-
-        //    if (cache.ContainsKey(var))
-        //        return cache[var];
-
-        //    var declType = declarations.FirstOrDefault(d => d.variables.Contains(var))?.type;
-        //    if (declType == null)
-        //        return new List<string>();
-
-        //    var vals = GetValuesForDeclarationType(declType, pkb);
-        //    cache[var] = vals;
-        //    return vals;
-        //}
-
-        //private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
-        //{
-        //    if (int.TryParse(var, out _))
-        //        return new List<string> { var };
-
-        //    if (var.StartsWith("\"") && var.EndsWith("\""))
-        //        return new List<string> { var.Trim('"') };
-
-        //    if (cache.ContainsKey(var))
-        //        return cache[var];
-
-        //    var declType = declarations.FirstOrDefault(d => d.variables.Contains(var))?.type;
-        //    if (declType == null)
-        //        return new List<string>();
-
-        //    var vals = GetValuesForDeclarationType(declType, pkb);
-        //    cache[var] = vals;
-        //    return vals;
-        //}
-
         private static List<string> GetValuesForVariable(string var, List<DeclarationNode> declarations, PKBClass pkb, Dictionary<string, List<string>> cache)
         {
             var trimmedVar = var.Trim();
-            //Console.WriteLine(var);
 
-            if (int.TryParse(trimmedVar, out _))
-                return new List<string> { trimmedVar };
+            if (trimmedVar == "_") return new List<string>();
+            if (int.TryParse(trimmedVar, out _)) return new List<string> { trimmedVar };
+            if (trimmedVar.StartsWith("\"") && trimmedVar.EndsWith("\"")) return new List<string> { trimmedVar.Trim('"') };
 
-            if (trimmedVar.StartsWith("\"") && trimmedVar.EndsWith("\""))
-                return new List<string> { trimmedVar.Trim('"') };
-
-            //if (declarations.SelectMany(d => d.variables).Any(v => v.Trim() == trimmedVar))
-            //{
-            //    if (cache.ContainsKey(trimmedVar))
-            //        return cache[trimmedVar];
-            //}
+            if (cache.ContainsKey(trimmedVar))
+                return cache[trimmedVar];
 
             var declType = declarations
                 .FirstOrDefault(d => d.variables.Any(v => v.Trim() == trimmedVar))
                 ?.type;
 
-            if (declType == null)
-                return new List<string>();
+            if (declType == null) return new List<string>();
 
             var vals = GetValuesForDeclarationType(declType, pkb);
             cache[trimmedVar] = vals;
-
-            //Console.WriteLine($"[DEBUG] Values for variable '{trimmedVar}': {string.Join(", ", vals)}");
             return vals;
         }
 
@@ -321,25 +259,171 @@ namespace aitsi
             string r = rightVal.Trim('"');
 
             bool IsInt(string s) => int.TryParse(s, out _);
+            bool leftIsUnderscore = l == "_";
+            bool rightIsUnderscore = r == "_";
+
+
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
 
-            //console.writeline($"checking clause: {clause.relation}({leftval}, {rightval})");
-
-
-            return rel switch
+            switch (rel)
             {
-                "modifies" => IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r),
-                "uses" => IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
-                "parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
-                "parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
-                "follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
-                "follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
-                "calls" => pkb.Calls(l, r),
-                "calls*" => pkb.CallsStar(l, r),
+                case "modifies":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtModifies(r).Count > 0 || pkb.GetProcModifies(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetModifiesStmt(li).Count > 0 : pkb.GetModifiesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtModifies(li, r) : pkb.ProcModifies(l, r);
+
+                case "uses":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetStmtUses(r).Count > 0 || pkb.GetProcUses(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return IsInt(l) ? pkb.GetUsesStmt(li).Count > 0 : pkb.GetUsesProc(l).Count > 0;
+
+                    return IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r);
+
+
+                case "calls":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledBy(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCalls(l).Count > 0;
+
+                    return pkb.Calls(l, r);
+
+                case "calls*":
+                    if (leftIsUnderscore && !rightIsUnderscore)
+                        return pkb.GetCalledByStar(r).Count > 0;
+
+                    if (!leftIsUnderscore && rightIsUnderscore)
+                        return pkb.GetCallsStar(l).Count > 0;
+
+                    return pkb.CallsStar(l, r);
+
+
+                case "follows":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+                    else
+                    {
+                        //Console.WriteLine("w follwoei");
+                        //Console.WriteLine(li);
+                        //Console.WriteLine(ri);
+                        return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
+                    }
+
+                case "follows*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetFollowsStar(li).Count > 0 || pkb.GetFollowedByStar(ri).Count > 0;
+
+                    return IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri);
+
+                case "parent":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.Parent(li, ri) || pkb.GetChildren(li).Count > 0 || pkb.GetParent(ri) != -1;
+
+                    return IsInt(l) && IsInt(r) && pkb.Parent(li, ri);
+
+                case "parent*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.ParentStar(li, ri) || pkb.GetChildrenStar(li).Count > 0 || pkb.GetParentStar(ri).Count > 0;
+
+                    return IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri);
+
+                //case "next":
+                //    if (leftIsUnderscore || rightIsUnderscore)
+                //        return pkb.GetNext(li).Count > 0 || pkb.GetPrevious(ri).Count > 0;
+
+                //    return IsInt(l) && IsInt(r) && pkb.GetNext(li).Contains(ri);
+
+                //case "next*":
+                //    if (leftIsUnderscore || rightIsUnderscore)
+                //        return pkb.GetNextStar(li).Count > 0 || pkb.GetPreviousStar(ri).Count > 0;
+
+                //    return IsInt(l) && IsInt(r) && pkb.GetNextStar(li).Contains(ri);
+
+
+                default:
+                    return false;
+
+                    //    "uses" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyUses(l, r) : IsInt(l) ? pkb.StmtUses(li, r) : pkb.ProcUses(l, r),
+                    //"parent" => IsInt(l) && IsInt(r) && pkb.Parent(li, ri),
+                    //"parent*" => IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri),
+                    //"follows" => IsInt(l) && IsInt(r) && pkb.Follows(li, ri),
+                    //"follows*" => IsInt(l) && IsInt(r) && pkb.FollowsStar(li, ri),
+                    //"calls" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCalls(l, r) : pkb.Calls(l, r),
+                    //"calls*" => leftIsUnderscore || rightIsUnderscore ? pkb.AnyCallsStar(l, r) : pkb.CallsStar(l, r),
+                    //_ => false
+            }
+        }
+
+        private static bool WithSatisfied(WithNode with, Dictionary<string, string> tuple)
+        {
+            string left = with.variables[0];
+            string right = with.variables[1];
+
+            string leftVal = GetWithValue(left, tuple);
+            string rightVal = GetWithValue(right, tuple);
+
+            return leftVal == rightVal;
+        }
+
+        private static bool PatternSatisfied(PatternNode pattern, string stmt, PKBClass pkb)
+        {
+            if (!int.TryParse(stmt, out int stmtNum))
+                return false;
+
+            var type = pkb.GetStatementType(stmtNum);
+
+            string expectedVar = pattern.variables[0].Trim('"');
+
+            return type switch
+            {
+                TType.Assign => pkb.GetModifiesStmt(stmtNum).Contains(expectedVar),
+                TType.While => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
+                TType.If => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
                 _ => false
             };
         }
+
+
+        private static string GetWithValue(string input, Dictionary<string, string> tuple)
+        {
+            if (input.StartsWith("\"") && input.EndsWith("\""))
+                return input.Trim('"');
+
+            if (int.TryParse(input, out _))
+                return input;
+
+            if (input.Contains("."))
+            {
+                var parts = input.Split('.');
+                string var = parts[0];
+                string attr = parts[1];
+
+                if (!tuple.ContainsKey(var)) return "";
+
+                string val = tuple[var];
+
+                return attr switch
+                {
+                    "procName" => val,
+                    "varName" => val,
+                    "value" => val,
+                    "stmt#" => val,
+                    "stmtNum" => val,
+                    _ => ""
+                };
+            }
+
+            return tuple.ContainsKey(input) ? tuple[input] : "";
+        }
+
 
         //sortowanie po koszciw
         private static int EstimateClauseCost(ClauseNode clause, Dictionary<string, List<string>> cache)
