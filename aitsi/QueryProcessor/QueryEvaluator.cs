@@ -370,17 +370,17 @@ namespace aitsi
 
                     return IsInt(l) && IsInt(r) && pkb.ParentStar(li, ri);
 
-                //case "next":
-                //    if (leftIsUnderscore || rightIsUnderscore)
-                //        return pkb.GetNext(li).Count > 0 || pkb.GetPrevious(ri).Count > 0;
+                case "next":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetNext(li).Count > 0 || pkb.GetPrevious(ri).Count > 0;
 
-                //    return IsInt(l) && IsInt(r) && pkb.GetNext(li).Contains(ri);
+                    return IsInt(l) && IsInt(r) && pkb.GetNext(li).Contains(ri);
 
-                //case "next*":
-                //    if (leftIsUnderscore || rightIsUnderscore)
-                //        return pkb.GetNextStar(li).Count > 0 || pkb.GetPreviousStar(ri).Count > 0;
+                case "next*":
+                    if (leftIsUnderscore || rightIsUnderscore)
+                        return pkb.GetNextStar(li).Count > 0 || pkb.GetPreviousStar(ri).Count > 0;
 
-                //    return IsInt(l) && IsInt(r) && pkb.GetNextStar(li).Contains(ri);
+                    return IsInt(l) && IsInt(r) && pkb.GetNextStar(li).Contains(ri);
 
 
                 default:
