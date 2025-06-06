@@ -21,6 +21,8 @@ namespace aitsi
             var selectedVariables = selectNode.variables;
             Dictionary<string, List<string>> valueCache = new();
             Dictionary<string, List<string>> possibleBindings = GetBindings(declarations, pkb, valueCache);
+            Dictionary<string, HashSet<Dictionary<string, string>>> filteredCombosByVar = new();
+
 
             var withVars = withs
                 .SelectMany(w => w.variables)
@@ -31,6 +33,7 @@ namespace aitsi
 
             if (withVars.Count > 0)
             {
+
                 var combos = GenerateCombinations(
                     withVars.ToDictionary(v => v, v => possibleBindings[v])
                 );
@@ -52,15 +55,25 @@ namespace aitsi
                 }
             }
 
-            // patterns - nowe
-            var patternVars = patterns
-                .SelectMany(p => p.variables)
-                .Distinct()
-                .Where(v => possibleBindings.ContainsKey(v))
-                .ToList();
 
-            if (patternVars.Count > 0)
+            //pattern
+            var assignPatterns = patterns.Where(p => declarations.Any(d => d.type == "assign" && d.variables.Contains(p.variables[0]))).ToList();
+            var whilePatterns = patterns.Where(p => declarations.Any(d => d.type == "while" && d.variables.Contains(p.variables[0]))).ToList();
+            var ifPatterns = patterns.Where(p => declarations.Any(d => d.type == "if" && d.variables.Contains(p.variables[0]))).ToList();
+
+
+            void FilterPatternBindings(
+                List<PatternNode> patternGroup,
+                Func<PatternNode, string, string, PKBClass, List<int>> satisfyFunc)
             {
+                var patternVars = patternGroup
+                    .SelectMany(p => p.variables)
+                    .Distinct()
+                    .Where(v => possibleBindings.ContainsKey(v))
+                    .ToList();
+
+                if (!patternVars.Any()) return;
+
                 var combos = GenerateCombinations(
                     patternVars.ToDictionary(v => v, v => possibleBindings[v])
                 );
@@ -68,16 +81,22 @@ namespace aitsi
                 var validCombos = combos
                     .Where(c =>
                     {
-                        foreach (var pattern in patterns)
+                        foreach (var pattern in patternGroup)
                         {
-                            if (!c.ContainsKey(pattern.variables[0])) continue;
+                            if (!c.ContainsKey(pattern.variables[0]) || !c.ContainsKey(pattern.variables[1]))
+                                return false;
+
                             var stmt = c[pattern.variables[0]];
-                            if (!PatternSatisfied(pattern, stmt, pkb))
+                            var varName = c[pattern.variables[1]];
+
+                            var matches = satisfyFunc(pattern, stmt, varName, pkb);
+                            if (!matches.Contains(int.Parse(stmt)))
                                 return false;
                         }
                         return true;
                     })
                     .ToList();
+
 
                 foreach (var var in patternVars)
                 {
@@ -89,8 +108,37 @@ namespace aitsi
 
                     possibleBindings[var] = newVals;
                     valueCache[var] = newVals;
+
+                    if (!filteredCombosByVar.ContainsKey(var))
+                        filteredCombosByVar[var] = new();
+
+                    foreach (var combo in validCombos.Where(c => c.ContainsKey(var)))
+                        filteredCombosByVar[var].Add(combo);
                 }
             }
+
+
+            List<int> PatternAssignSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
+            {
+                List<int> results = pkb.GetAssignStmts(varName);
+                return results;
+            }
+
+            List<int> PatternWhileSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
+            {
+                List<int> results = pkb.GetWhileStmts(varName);
+                return results;
+            }
+
+            List<int> PatternIfSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
+            {
+                return pkb.GetIfStmts(varName);
+            }
+
+            FilterPatternBindings(assignPatterns, PatternAssignSatisfied);
+            FilterPatternBindings(whilePatterns, PatternWhileSatisfied);
+            FilterPatternBindings(ifPatterns, PatternIfSatisfied);
+
             //koniec patterns
 
 
@@ -177,10 +225,9 @@ namespace aitsi
             if (!possibleBindings.ContainsKey(selectedVariable))
                 return "none";
 
-            var resultSet = possibleBindings[selectedVariable];
-            resultSet = resultSet
-                .Where(val => patterns.All(p => PatternSatisfied(p, val, pkb)))
-                .ToList();
+            var resultSet = filteredCombosByVar.ContainsKey(selectedVariable)
+                 ? filteredCombosByVar[selectedVariable].Select(c => c[selectedVariable]).Distinct().ToList()
+                 : possibleBindings[selectedVariable];
 
             if (!resultSet.Any())
                 return "none";
@@ -341,16 +388,32 @@ namespace aitsi
                     return pkb.CallsStar(l, r);
 
 
+                //case "follows":
+                //    if (leftIsUnderscore || rightIsUnderscore)
+                //        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+                //    else
+                //    {
+                //        return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
+                //    }
+
                 case "follows":
-                    if (leftIsUnderscore || rightIsUnderscore)
-                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
-                    else
+                    if (!leftIsUnderscore && !rightIsUnderscore)
                     {
-                        //Console.WriteLine("w follwoei");
-                        //Console.WriteLine(li);
-                        //Console.WriteLine(ri);
                         return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
                     }
+                    else if (!leftIsUnderscore && rightIsUnderscore)
+                    {
+                        return IsInt(l) && pkb.GetFollows(li) != -1;
+                    }
+                    else if (leftIsUnderscore && !rightIsUnderscore)
+                    {
+                        return IsInt(r) && pkb.GetFollowedBy(ri) != -1;
+                    }
+                    else
+                    {
+                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+                    }
+
 
                 case "follows*":
                     if (leftIsUnderscore || rightIsUnderscore)
@@ -408,20 +471,36 @@ namespace aitsi
             return leftVal == rightVal;
         }
 
+        //private static bool PatternSatisfied(PatternNode pattern, string stmt, PKBClass pkb)
+        //{
+        //    if (!int.TryParse(stmt, out int stmtNum))
+        //        return false;
+
+        //    var type = pkb.GetStatementType(stmtNum);
+        //    string expectedVar = pattern.variables[0].Trim('"');
+
+        //    return type switch
+        //    {
+        //        TType.Assign => pkb.GetModifiesStmt(stmtNum).Contains(expectedVar),
+        //        TType.While => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
+        //        TType.If => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
+        //        _ => false
+        //    };
+        //}
+
         private static bool PatternSatisfied(PatternNode pattern, string stmt, PKBClass pkb)
         {
             if (!int.TryParse(stmt, out int stmtNum))
                 return false;
 
-            var type = pkb.GetStatementType(stmtNum);
+            var stmtType = pkb.GetStatementType(stmtNum);
+            var varName = pattern.variables[1].Trim('"');
 
-            string expectedVar = pattern.variables[0].Trim('"');
-
-            return type switch
+            return stmtType switch
             {
-                TType.Assign => pkb.GetModifiesStmt(stmtNum).Contains(expectedVar),
-                TType.While => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
-                TType.If => pkb.GetUsesStmt(stmtNum).Contains(expectedVar),
+                TType.Assign => pkb.GetModifiesStmt(stmtNum).Contains(varName),
+                TType.While => pkb.GetUsesStmt(stmtNum).Contains(varName),
+                TType.If => pkb.GetUsesStmt(stmtNum).Contains(varName),
                 _ => false
             };
         }
