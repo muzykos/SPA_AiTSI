@@ -2,6 +2,7 @@ using aitsi.Parser;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 
 namespace aitsi.PKB
 {
@@ -60,6 +61,9 @@ namespace aitsi.PKB
             Console.WriteLine("parentStar " + parentStar.Count);
             Console.WriteLine("calls " + calls.Count);
             Console.WriteLine("callsStar " + callsStar.Count);
+
+            foreach(string var in assignStmts.Keys)
+                foreach(var value in assignStmts[var])Console.WriteLine("key: " + var + ", value: " + value);
 
         }
         public void ExtractInformation()
@@ -622,8 +626,16 @@ namespace aitsi.PKB
         }
         public List<int> GetIfStmts(string variable = "")
         {
-            if (string.IsNullOrEmpty(variable))
-                return ifStmts.Values.SelectMany(list => list).ToList();
+
+            if (string.IsNullOrEmpty(variable) || variable == "_")
+            {
+                List<int> result = new List<int>();
+                foreach (var var in ifStmts.Values)
+                    foreach (var value in var) {
+                        result.Add(value);
+                    }
+                return result;
+            }
 
             return ifStmts.ContainsKey(variable) ? ifStmts[variable] : new List<int>();
         }
