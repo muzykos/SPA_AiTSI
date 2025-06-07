@@ -205,7 +205,7 @@ namespace aitsi.PKB
 
             if (!modifiesStmt.ContainsKey(stmtNum))
                 modifiesStmt[stmtNum] = new List<string>();
-            modifiesStmt[stmtNum ].Add(varName);
+            //modifiesStmt[stmtNum ].Add(varName);
 
             foreach (TNode childStmt in stmtNode.getChildren())
             {
@@ -231,7 +231,7 @@ namespace aitsi.PKB
 
             if (!modifiesStmt.ContainsKey(stmtNum))
                 modifiesStmt[stmtNum] = new List<string>();
-            modifiesStmt[stmtNum].Add(varName);
+            //modifiesStmt[stmtNum].Add(varName);
 
             foreach (TNode childNode in stmtNode.getChildren())
             {
@@ -287,7 +287,6 @@ namespace aitsi.PKB
                         {
                             string calledProc = stmt.getAttr();
                             
-                            // Add modifies from called procedure to call statement
                             if (modifies.ContainsKey(calledProc))
                             {
                                 foreach (var modifiedVar in modifies[calledProc])
@@ -353,7 +352,6 @@ namespace aitsi.PKB
                 }
             }
 
-            // Fourth pass: handle transitive modifies through procedure calls
             do
             {
                 changed = false;
