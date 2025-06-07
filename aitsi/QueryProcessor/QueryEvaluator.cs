@@ -97,7 +97,6 @@ namespace aitsi
                     })
                     .ToList();
 
-                Console.WriteLine($"Valid combos: {validCombos.Count}");
 
                 foreach (var var in patternVars)
                 {
@@ -122,22 +121,18 @@ namespace aitsi
             List<int> PatternAssignSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
                 List<int> results = pkb.GetAssignStmts(varName);
-                foreach (int stmtNum in results) Console.WriteLine(stmtNum);
                 return results;
             }
 
             List<int> PatternWhileSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
                 List<int> results = pkb.GetWhileStmts(varName);
-                foreach (int stmtNum in results) Console.WriteLine(stmtNum);
                 return results;
             }
 
             List<int> PatternIfSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
-                List<int> results = pkb.GetIfStmts(varName);
-                foreach (int stmtNum in results) Console.WriteLine(stmtNum);
-                return results;
+                return pkb.GetIfStmts(varName);
             }
 
             FilterPatternBindings(assignPatterns, PatternAssignSatisfied);
@@ -146,27 +141,36 @@ namespace aitsi
 
             //koniec patterns
 
+            bool IsSymmetricRelation(string rel)
+            {
+                rel = rel.ToLower();
+                return rel == "follows" || rel == "follows*" || rel == "parent" || rel == "parent*" || rel == "next" || rel == "next*";
+            }
 
             // BOOLEAN
             if (selectedVariables.Count == 1 && selectedVariables[0].Equals("BOOLEAN", StringComparison.OrdinalIgnoreCase))
             {
                 if (clauses.Count == 0 && withs.Count == 0) return "true";
 
-
-                //foreach (var pattern in patterns)
-                //{
-                //    var stmt = pattern.variables[0];
-                //    var stmtVals = GetValuesForVariable(stmt, declarations, pkb, valueCache);
-
-                //    bool matched = stmtVals.Any(s => PatternSatisfied(pattern, s, pkb));
-                //    if (!matched) return "false";
-                //}
-
-
                 foreach (var clause in clauses.OrderBy(c => EstimateClauseCost(c, valueCache)))
                 {
-                    var leftVals = GetValuesForVariable(clause.variables[0], declarations, pkb, valueCache);
-                    var rightVals = GetValuesForVariable(clause.variables[1], declarations, pkb, valueCache);
+                    string rel = clause.relation.ToLower();
+                    string leftRaw = clause.variables[0];
+                    string rightRaw = clause.variables[1];
+
+                    bool leftIsUnderscore = leftRaw == "_";
+                    bool rightIsUnderscore = rightRaw == "_";
+
+                    if (IsSymmetricRelation(rel) && leftRaw == rightRaw && !leftIsUnderscore)
+                        return "false";
+
+                    var leftVals = leftIsUnderscore
+                        ? new List<string> { "_" }
+                        : GetValuesForVariable(leftRaw, declarations, pkb, valueCache);
+
+                    var rightVals = rightIsUnderscore
+                        ? new List<string> { "_" }
+                        : GetValuesForVariable(rightRaw, declarations, pkb, valueCache);
 
                     foreach (var l in leftVals)
                     {
@@ -177,8 +181,11 @@ namespace aitsi
                         }
                     }
                 }
+
                 return "false";
             }
+
+
 
             // tuple
             if (selectedVariables.Count > 1)
@@ -192,21 +199,16 @@ namespace aitsi
                 foreach (var tuple in cartesianProduct)
                 {
                     bool allSatisfied = true;
-
-                    //foreach (var pattern in patterns)
-                    //{
-                    //    var stmt = tuple.ContainsKey(pattern.variables[0]) ? tuple[pattern.variables[0]] : pattern.variables[0];
-                    //    if (!PatternSatisfied(pattern, stmt, pkb))
-                    //    {
-                    //        allSatisfied = false;
-                    //        break;
-                    //    }
-                    //}
-
                     foreach (var clause in clauses)
                     {
                         var left = tuple.ContainsKey(clause.variables[0]) ? tuple[clause.variables[0]] : clause.variables[0];
                         var right = tuple.ContainsKey(clause.variables[1]) ? tuple[clause.variables[1]] : clause.variables[1];
+
+                        if ((clause.variables[0] == clause.variables[1]) && left == right && IsSymmetricRelation(clause.relation))
+                        {
+                            allSatisfied = false;
+                            break;
+                        }
 
                         if (!ClauseSatisfied(clause, left, right, pkb))
                         {
@@ -230,9 +232,19 @@ namespace aitsi
             if (!possibleBindings.ContainsKey(selectedVariable))
                 return "none";
 
+            foreach (var clause in clauses)
+            {
+                if (IsSymmetricRelation(clause.relation)
+                    && clause.variables[0] == clause.variables[1]
+                    && clause.variables[0] != "_")
+                {
+                    return "none";
+                }
+            }
+
             var resultSet = filteredCombosByVar.ContainsKey(selectedVariable)
-     ? filteredCombosByVar[selectedVariable].Select(c => c[selectedVariable]).Distinct().ToList()
-     : possibleBindings[selectedVariable];
+                 ? filteredCombosByVar[selectedVariable].Select(c => c[selectedVariable]).Distinct().ToList()
+                 : possibleBindings[selectedVariable];
 
             if (!resultSet.Any())
                 return "none";
@@ -253,6 +265,9 @@ namespace aitsi
                     ? GetValuesForVariable(right, declarations, pkb, valueCache)
                     : new List<string> { right };
 
+
+              
+
                 if (left == selectedVariable)
                 {
                     resultSet = resultSet
@@ -264,9 +279,6 @@ namespace aitsi
                     resultSet = resultSet
                         .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
                         .ToList();
-                }
-                else
-                {
                 }
 
                 if (!resultSet.Any())
@@ -349,9 +361,11 @@ namespace aitsi
             bool leftIsUnderscore = l == "_";
             bool rightIsUnderscore = r == "_";
 
-
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
+
+            if ((l == r) && (rel == "follows" || rel == "follows*" || rel == "parent" || rel == "parent*" || rel == "next" || rel == "next*"))
+                return false;
 
             switch (rel)
             {
@@ -392,15 +406,6 @@ namespace aitsi
 
                     return pkb.CallsStar(l, r);
 
-
-                //case "follows":
-                //    if (leftIsUnderscore || rightIsUnderscore)
-                //        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
-                //    else
-                //    {
-                //        return IsInt(l) && IsInt(r) && pkb.Follows(li, ri);
-                //    }
-
                 case "follows":
                     if (!leftIsUnderscore && !rightIsUnderscore)
                     {
@@ -416,8 +421,10 @@ namespace aitsi
                     }
                     else
                     {
-                        return pkb.GetFollows(li) != -1 || pkb.GetFollowedBy(ri) != -1;
+                        // Oba są "_"
+                        return pkb.GetFollowsMap().Count > 0;
                     }
+
 
 
                 case "follows*":
