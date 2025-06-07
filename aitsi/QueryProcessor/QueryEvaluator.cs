@@ -120,18 +120,21 @@ namespace aitsi
 
             List<int> PatternAssignSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
+              //  Console.WriteLine("PatternAssignSatisfied - varName: " + varName);
                 List<int> results = pkb.GetAssignStmts(varName);
                 return results;
             }
 
             List<int> PatternWhileSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
+              //  Console.WriteLine("PatternWhileSatisfied - varName: " + varName);
                 List<int> results = pkb.GetWhileStmts(varName);
                 return results;
             }
 
             List<int> PatternIfSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
+              //  Console.WriteLine("PatternIfSatisfied - varName: " + varName);
                 return pkb.GetIfStmts(varName);
             }
 
@@ -279,17 +282,35 @@ namespace aitsi
 
                 if (left == selectedVariable)
                 {
-                    resultSet = resultSet
-                        .Where(l => rightVals.Any(r => ClauseSatisfied(clause, l, r, pkb)))
-                        .ToList();
-                }
-                else if (right == selectedVariable)
-                {
-                    resultSet = resultSet
-                        .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
-                        .ToList();
+                    if (right == "_")
+                    {
+                        resultSet = resultSet
+                            .Where(l => ClauseSatisfied(clause, l, "_", pkb))
+                            .ToList();
+                    }
+                    else
+                    {
+                        resultSet = resultSet
+                            .Where(l => rightVals.Any(r => ClauseSatisfied(clause, l, r, pkb)))
+                            .ToList();
+                    }
                 }
 
+                else if (right == selectedVariable)
+                {
+                    if (left == "_")
+                    {
+                        resultSet = resultSet
+                            .Where(r => ClauseSatisfied(clause, "_", r, pkb))
+                            .ToList();
+                    }
+                    else
+                    {
+                        resultSet = resultSet
+                            .Where(r => leftVals.Any(l => ClauseSatisfied(clause, l, r, pkb)))
+                            .ToList();
+                    }
+                }
                 if (!resultSet.Any())
                     return "none";
             }
@@ -356,6 +377,7 @@ namespace aitsi
                 "variable" => pkb.GetVariables(),
                 "constant" => pkb.GetConstants(),
                 "procedure" => pkb.GetProcedures(),
+                "call" => pkb.GetCallStmts().Select(x => x.ToString()).ToList(),
                 _ => new List<string>()
             };
         }
@@ -371,8 +393,14 @@ namespace aitsi
             bool rightIsUnderscore = r == "_";
             int li = IsInt(l) ? int.Parse(l) : -1;
             int ri = IsInt(r) ? int.Parse(r) : -1;
+            //Console.WriteLine("Czy lewy to podloga:");
+            //Console.WriteLine(leftIsUnderscore);
+            //Console.WriteLine("lewa:");
+            //Console.WriteLine(li);
+            //Console.WriteLine("prawa:");
+            //Console.WriteLine(ri);
 
-            if ((l == r) && (!leftIsUnderscore) && (rel == "follows" || rel == "follows*" || rel == "parent" || rel == "parent*" || rel == "next" || rel == "next*"))
+            if ((l == r) && (!leftIsUnderscore) && (rel == "follows" || rel == "follows*" || rel == "parent" || rel == "parent*" || rel == "next" || rel == "calls" || rel == "calls*"))
                 return false;
 
             switch (rel)
@@ -423,9 +451,9 @@ namespace aitsi
                     {
                         return IsInt(l) && pkb.GetFollows(li) != -1;
                     }
-                    else if (leftIsUnderscore && !rightIsUnderscore)
+                    else if (leftIsUnderscore && !rightIsUnderscore) //błędy z Follows zawsze w tym przypadku
                     {
-                        return IsInt(r) && pkb.GetFollowedBy(ri) != -1;
+                        return IsInt(r) && pkb.GetFollowedBy(ri) != 0;
                     }
                     else
                     {

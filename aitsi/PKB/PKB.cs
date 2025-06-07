@@ -100,6 +100,8 @@ namespace aitsi.PKB
             BuildFollowsStar();
             BuildParentStar();
             BuildCallsStar();
+            BuildModifiesRelationships();
+            BuildUsesRelationships();
             BuildNext();
             BuildNextStar();
         }
@@ -201,6 +203,10 @@ namespace aitsi.PKB
             if (!uses[procName].Contains(varName))
                 uses[procName].Add(varName);
 
+            if (!modifiesStmt.ContainsKey(stmtNum))
+                modifiesStmt[stmtNum] = new List<string>();
+            //modifiesStmt[stmtNum ].Add(varName);
+
             foreach (TNode childStmt in stmtNode.getChildren())
             {
                 ProcessStatement(childStmt, procName, stmtNum);
@@ -222,6 +228,10 @@ namespace aitsi.PKB
 
             if (!uses[procName].Contains(varName))
                 uses[procName].Add(varName);
+
+            if (!modifiesStmt.ContainsKey(stmtNum))
+                modifiesStmt[stmtNum] = new List<string>();
+            //modifiesStmt[stmtNum].Add(varName);
 
             foreach (TNode childNode in stmtNode.getChildren())
             {
@@ -249,6 +259,250 @@ namespace aitsi.PKB
 
             if (!calls[procName].Contains(calledProc))
                 calls[procName].Add(calledProc);
+
+            if (!modifiesStmt.ContainsKey(stmtNum))
+                modifiesStmt[stmtNum] = new List<string>();
+
+            if (!usesStmt.ContainsKey(stmtNum))
+                usesStmt[stmtNum] = new List<string>();
+        }
+
+        private void BuildModifiesRelationships()
+        {
+            bool changed;
+
+            do
+            {
+                changed = false;
+
+                foreach (var procName in procedures)
+                {
+                    var procStmts = procToStmts[procName];
+                    
+                    foreach (var stmtNum in procStmts)
+                    {
+                        var stmt = statements[stmtNum];
+                        
+                        if (stmt.getType() == TType.Call)
+                        {
+                            string calledProc = stmt.getAttr();
+                            
+                            if (modifies.ContainsKey(calledProc))
+                            {
+                                foreach (var modifiedVar in modifies[calledProc])
+                                {
+                                    if (!modifiesStmt[stmtNum].Contains(modifiedVar))
+                                    {
+                                        modifiesStmt[stmtNum].Add(modifiedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+
+            do
+            {
+                changed = false;
+
+                foreach (var stmtNum in statements.Keys)
+                {
+                    var stmt = statements[stmtNum];
+
+                    if (stmt.getType() == TType.While || stmt.getType() == TType.If)
+                    {
+                        var childStmts = GetAllChildStatements(stmtNum);
+
+                        foreach (var childStmt in childStmts)
+                        {
+                            if (modifiesStmt.ContainsKey(childStmt))
+                            {
+                                foreach (var modifiedVar in modifiesStmt[childStmt])
+                                {
+                                    if (!modifiesStmt[stmtNum].Contains(modifiedVar))
+                                    {
+                                        modifiesStmt[stmtNum].Add(modifiedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+
+            foreach (var procName in procedures)
+            {
+                var procStmts = procToStmts[procName];
+
+                foreach (var stmtNum in procStmts)
+                {
+                    if (modifiesStmt.ContainsKey(stmtNum))
+                    {
+                        foreach (var modifiedVar in modifiesStmt[stmtNum])
+                        {
+                            if (!modifies[procName].Contains(modifiedVar))
+                            {
+                                modifies[procName].Add(modifiedVar);
+                            }
+                        }
+                    }
+                }
+            }
+
+            do
+            {
+                changed = false;
+
+                foreach (var procName in procedures)
+                {
+                    if (calls.ContainsKey(procName))
+                    {
+                        foreach (var calledProc in calls[procName])
+                        {
+                            if (modifies.ContainsKey(calledProc))
+                            {
+                                foreach (var modifiedVar in modifies[calledProc])
+                                {
+                                    if (!modifies[procName].Contains(modifiedVar))
+                                    {
+                                        modifies[procName].Add(modifiedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+        }
+
+        private void BuildUsesRelationships()
+        {
+            bool changed;
+            do
+            {
+                changed = false;
+
+                foreach (var procName in procedures)
+                {
+                    var procStmts = procToStmts[procName];
+
+                    foreach (var stmtNum in procStmts)
+                    {
+                        var stmt = statements[stmtNum];
+
+                        if (stmt.getType() == TType.Call)
+                        {
+                            string calledProc = stmt.getAttr();
+
+                            if (uses.ContainsKey(calledProc))
+                            {
+                                foreach (var usedVar in uses[calledProc])
+                                {
+                                    if (!usesStmt[stmtNum].Contains(usedVar))
+                                    {
+                                        usesStmt[stmtNum].Add(usedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+
+            do
+            {
+                changed = false;
+
+                foreach (var stmtNum in statements.Keys)
+                {
+                    var stmt = statements[stmtNum];
+
+                    if (stmt.getType() == TType.While || stmt.getType() == TType.If)
+                    {
+                        var childStmts = GetAllChildStatements(stmtNum);
+
+                        foreach (var childStmt in childStmts)
+                        {
+                            if (usesStmt.ContainsKey(childStmt))
+                            {
+                                foreach (var usedVar in usesStmt[childStmt])
+                                {
+                                    if (!usesStmt[stmtNum].Contains(usedVar))
+                                    {
+                                        usesStmt[stmtNum].Add(usedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+
+            foreach (var procName in procedures)
+            {
+                var procStmts = procToStmts[procName];
+
+                foreach (var stmtNum in procStmts)
+                {
+                    if (usesStmt.ContainsKey(stmtNum))
+                    {
+                        foreach (var usedVar in usesStmt[stmtNum])
+                        {
+                            if (!uses[procName].Contains(usedVar))
+                            {
+                                uses[procName].Add(usedVar);
+                            }
+                        }
+                    }
+                }
+            }
+
+            do
+            {
+                changed = false;
+
+                foreach (var procName in procedures)
+                {
+                    if (calls.ContainsKey(procName))
+                    {
+                        foreach (var calledProc in calls[procName])
+                        {
+                            if (uses.ContainsKey(calledProc))
+                            {
+                                foreach (var usedVar in uses[calledProc])
+                                {
+                                    if (!uses[procName].Contains(usedVar))
+                                    {
+                                        uses[procName].Add(usedVar);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+        }
+        private List<int> GetAllChildStatements(int parentStmt)
+        {
+            var childStmts = new List<int>();
+
+            foreach (var kvp in parent)
+            {
+                if (kvp.Value == parentStmt)
+                {
+                    childStmts.Add(kvp.Key);
+                    childStmts.AddRange(GetAllChildStatements(kvp.Key));
+                }
+            }
+
+            return childStmts;
         }
 
         private void ExtractUsedVariables(TNode exprNode, int stmtNum, string procName)
@@ -852,6 +1106,11 @@ namespace aitsi.PKB
         public TType? GetStatementType(int stmtNum)
         {
             return statements.ContainsKey(stmtNum) ? statements[stmtNum].getType() : null;
+        }
+
+        public Dictionary<int, int> GetFollowsMap()
+        {
+            return follows;
         }
         // GETTERY dla potrzebnych prywatnych map i tabel
 
