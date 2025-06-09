@@ -61,18 +61,47 @@ namespace aitsi
             var whilePatterns = patterns.Where(p => declarations.Any(d => d.type == "while" && d.variables.Contains(p.variables[0]))).ToList();
             var ifPatterns = patterns.Where(p => declarations.Any(d => d.type == "if" && d.variables.Contains(p.variables[0]))).ToList();
 
-
             void FilterPatternBindings(
-                List<PatternNode> patternGroup,
-                Func<PatternNode, string, string, PKBClass, List<int>> satisfyFunc)
+    List<PatternNode> patternGroup,
+    Func<PatternNode, string, string, PKBClass, List<int>> satisfyFunc)
             {
                 var patternVars = patternGroup
                     .SelectMany(p => p.variables)
+                    .Where(v => !v.StartsWith("\"")) 
                     .Distinct()
                     .Where(v => possibleBindings.ContainsKey(v))
                     .ToList();
 
-                if (!patternVars.Any()) return;
+                if (!patternVars.Any() && patternGroup.All(p => p.variables.All(v => v.StartsWith("\""))))
+                {
+                    foreach (var pattern in patternGroup)
+                    {
+                        string stmt = pattern.variables[0];
+                        string varName = pattern.variables[1];
+
+                        if (stmt.StartsWith("\"") || varName.StartsWith("\""))
+                        {
+                            stmt = stmt.Trim('"');
+                            varName = varName.Trim('"');
+
+                            var matches = satisfyFunc(pattern, stmt, varName, pkb);
+                            if (matches.Count > 0)
+                            {
+                                if (!filteredCombosByVar.ContainsKey(pattern.variables[0]))
+                                    filteredCombosByVar[pattern.variables[0]] = new();
+
+                                filteredCombosByVar[pattern.variables[0]].Add(new Dictionary<string, string>
+                                {
+                                    [pattern.variables[0]] = stmt
+                                });
+
+                                possibleBindings[pattern.variables[0]] = new List<string> { stmt };
+                            }
+                        }
+                    }
+
+                    return;
+                }
 
                 var combos = GenerateCombinations(
                     patternVars.ToDictionary(v => v, v => possibleBindings[v])
@@ -83,11 +112,13 @@ namespace aitsi
                     {
                         foreach (var pattern in patternGroup)
                         {
-                            if (!c.ContainsKey(pattern.variables[0]) || !c.ContainsKey(pattern.variables[1]))
-                                return false;
+                            string stmt = pattern.variables[0];
+                            string varName = pattern.variables[1];
 
-                            var stmt = c[pattern.variables[0]];
-                            var varName = c[pattern.variables[1]];
+                            stmt = stmt.StartsWith("\"") ? stmt.Trim('"') : c.ContainsKey(stmt) ? c[stmt] : null;
+                            varName = varName.StartsWith("\"") ? varName.Trim('"') : c.ContainsKey(varName) ? c[varName] : null;
+
+                            if (stmt == null || varName == null) return false;
 
                             var matches = satisfyFunc(pattern, stmt, varName, pkb);
                             if (!matches.Contains(int.Parse(stmt)))
@@ -96,7 +127,6 @@ namespace aitsi
                         return true;
                     })
                     .ToList();
-
 
                 foreach (var var in patternVars)
                 {
@@ -117,24 +147,20 @@ namespace aitsi
                 }
             }
 
-
             List<int> PatternAssignSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
-              //  Console.WriteLine("PatternAssignSatisfied - varName: " + varName);
                 List<int> results = pkb.GetAssignStmts(varName);
                 return results;
             }
 
             List<int> PatternWhileSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
-              //  Console.WriteLine("PatternWhileSatisfied - varName: " + varName);
                 List<int> results = pkb.GetWhileStmts(varName);
                 return results;
             }
 
             List<int> PatternIfSatisfied(PatternNode pattern, string stmt, string varName, PKBClass pkb)
             {
-              //  Console.WriteLine("PatternIfSatisfied - varName: " + varName);
                 return pkb.GetIfStmts(varName);
             }
 
